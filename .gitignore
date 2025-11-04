@@ -1,0 +1,62 @@
+# Archivos de Python
+*.py[cod]
+__pycache__/
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.log
+
+# Entornos virtuales
+venv/
+env/
+ENV/
+.venv/
+.ENV/
+
+# Jupyter Notebooks
+.ipynb_checkpoints/
+
+
+# Archivos de configuración de Jupyter
+.jupyter/
+.profile_default/
+.ipython/
+
+# Archivos de pruebas
+.pytest_cache/
+.tox/
+.coverage
+htmlcov/
+nosetests.xml
+coverage.xml
+*.cover
+*.pyc
+
+# Archivos de bases de datos y datos
+*.sqlite3
+*.db
+*.csv
+*.tsv
+*.dat
+*.h5
+*.parquet
+
+# Modelos y salidas pesadas
+*.pkl
+*.joblib
+*.npy
+*.npz
+*.ckpt
+
+# Archivos de entorno y configuración
+.env
+*.env
+.env.*
+*.ini
+*.cfg
+
+# Otros
+.DS_Store
+Thumbs.db*
