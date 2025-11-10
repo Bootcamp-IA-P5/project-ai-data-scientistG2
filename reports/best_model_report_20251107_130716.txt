@@ -1,0 +1,24 @@
+================================================================================
+REPORTE - PREDICCIÓN DE ICTUS
+================================================================================
+
+Modelo: LogisticRegression
+Estrategia de Sampling: UnderSampling
+Fecha: 2025-11-07 13:07:16
+
+MÉTRICAS DE RENDIMIENTO:
+  Recall (Sensibilidad):  0.9000
+  Precision (VPP):        0.1500
+  F1-Score:               0.2571
+  AUC-PR:                 0.1633
+  Especificidad:          0.7307
+  VPN:                    0.9928
+
+MATRIZ DE CONFUSIÓN:
+  TN: 692  FP: 255
+  FN: 5  TP: 45
+
+INTERPRETACIÓN CLÍNICA:
+  • De 100 pacientes CON ictus → Detectamos 90
+  • Si test POSITIVO → 15.0% probabilidad real de ictus
+  • Casos NO detectados: 5 (CRÍTICO)

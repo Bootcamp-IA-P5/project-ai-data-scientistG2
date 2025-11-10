@@ -1,0 +1,21 @@
+================================================================================
+REPORTE - OPTIMIZACIÓN DE THRESHOLD + ENSEMBLE
+================================================================================
+
+Fecha: 2025-11-09 12:03:59
+Mejor Modelo: LR_Calibrated
+Threshold Optimizado: 0.050
+
+MÉTRICAS:
+  Recall:      0.8600
+  Precision:   0.1387
+  F1-Score:    0.2389
+
+MATRIZ DE CONFUSIÓN:
+  TN: 680  FP: 267
+  FN: 7  TP: 43
+
+INTERPRETACIÓN:
+  • Casos con ictus detectados: 43 de 50
+  • Casos perdidos (FN): 7
+  • Falsos positivos (FP): 267
