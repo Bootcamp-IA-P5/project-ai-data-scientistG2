@@ -1,8 +1,6 @@
 from pathlib import Path
 from datetime import datetime
 import pickle
-import os
-import argparse
 import warnings
 
 import numpy as np
@@ -83,16 +81,8 @@ class ThresholdOptimizerEnsemble:
         scores = {t: {'f1': [], 'precision': [], 'recall': []} for t in thresholds}
 
         for train_idx, val_idx in cv.split(X, y):
-            # Separar correctamente
-            if isinstance(X, np.ndarray):
-                X_tr, X_val = X[train_idx], X[val_idx]
-            else:
-                X_tr, X_val = X.iloc[train_idx], X.iloc[val_idx]
-
-            if isinstance(y, np.ndarray):
-                y_tr, y_val = y[train_idx], y[val_idx]
-            else:
-                y_tr, y_val = y.iloc[train_idx], y.iloc[val_idx]
+            X_tr, X_val = (X.iloc[train_idx], X.iloc[val_idx]) if isinstance(X, pd.DataFrame) else (X[train_idx], X[val_idx])
+            y_tr, y_val = (y.iloc[train_idx], y.iloc[val_idx]) if isinstance(y, pd.Series) else (y[train_idx], y[val_idx])
 
             m = clone(model)
             m.fit(X_tr, y_tr)
@@ -139,7 +129,6 @@ class ThresholdOptimizerEnsemble:
             'auc': roc_auc_score(y_test, proba)
         }
 
-        # Overfitting metric
         if X_train is not None and y_train is not None:
             train_proba = model.predict_proba(X_train)[:, 1]
             train_pred = (train_proba >= threshold).astype(int)
@@ -160,7 +149,6 @@ class ThresholdOptimizerEnsemble:
         plt.ylabel('Score')
         plt.legend()
 
-        # Guardar el PNG
         png_path = self.reports_dir / f"threshold_cv_{model_name}.png"
         plt.savefig(png_path, dpi=300, bbox_inches='tight')
         print(f"Gráfica guardada en: {png_path}")
@@ -183,7 +171,6 @@ class ThresholdOptimizerEnsemble:
             metrics['threshold_cv_results'] = df_thresh
             self.results[name] = {'model': model_final, 'best_threshold': best_t, 'metrics': metrics}
 
-            # Plot CV results
             self.plot_threshold_cv(df_thresh, name)
 
         # Super ensemble logic (top 3)
@@ -207,17 +194,15 @@ class ThresholdOptimizerEnsemble:
             self.results['Super_Ensemble'] = {'model': super_final, 'best_threshold': best_t, 'metrics': metrics}
             self.plot_threshold_cv(df_thresh, 'Super_Ensemble')
 
+        # Guardamos mejor modelo según recall
         best_name = max(self.results.items(), key=lambda kv: kv[1]['metrics']['recall'])[0]
-        #para guardar con el F1 más alto
-        #best_name = max(self.results.items(), key=lambda kv: kv[1]['metrics']['recall']*0.6 + kv[1]['metrics']['precision']*0.4)[0]
         self.best_model_name = best_name
         self.best_model = self.results[best_name]['model']
         self.best_threshold = self.results[best_name]['best_threshold']
-        return self.results
+
+        return {**self.results, "best_model_name": self.best_model_name}  # para tests
 
     # ---------------------- saving ----------------------
-
-    
     def save_best(self, filename_prefix='ictus_model'):
         if self.best_model is None:
             raise RuntimeError('No hay modelo entrenado para guardar')
@@ -227,8 +212,18 @@ class ThresholdOptimizerEnsemble:
         with open(model_path, 'wb') as f:
             pickle.dump(payload, f)
         return model_path
-    
 
+     # ---------------------- método para tests ----------------------
+    def get_model(self, model_name, X, y):
+        """Compatibilidad con tests: devuelve un modelo base entrenado"""
+        if model_name.lower() == "lr":
+            model = self._build_lr()
+        elif model_name.lower() == "lgbm":
+            model = self._build_lgbm()
+        else:
+            raise ValueError(f"Modelo desconocido: {model_name}")
+        model.fit(X, y)
+        return model
 
 # ---------------------- Demo / CLI ----------------------
 def demo_run():
@@ -244,6 +239,8 @@ def demo_run():
 
     print('\n--- Model Summary ---')
     for name, info in results.items():
+        if name == "best_model_name":
+            continue
         m = info['metrics']
         print(f"{name}: threshold={info['best_threshold']:.3f} recall={m['recall']:.3f} precision={m['precision']:.3f} f1={m['f1']:.3f} overfit_recall_diff={m.get('overfit_recall_diff', 0):.3f}")
 
