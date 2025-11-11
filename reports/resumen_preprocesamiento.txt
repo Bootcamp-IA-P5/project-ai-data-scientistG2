@@ -1,0 +1,55 @@
+
+📊 RESUMEN DEL PREPROCESAMIENTO - BRAIN STROKE CT IMAGES
+================================================================================
+
+🔢 ESTADÍSTICAS GENERALES:
+  - Total de imágenes: 2501
+  - Clases: ['Normal', 'Stroke']
+  - Dimensión original promedio: 650x650
+  - Dimensión tras preprocesamiento: (224, 224)
+
+⚖️ BALANCE DE CLASES:
+clase
+Normal    1551
+Stroke     950
+
+📦 DATOS GUARDADOS EN /data:
+  - X_imagenes_procesadas.npy: Shape (2501, 224, 224)
+  - y_etiquetas.npy: Shape (2501,)
+  - metadata_imagenes_completa.csv: 2501 filas
+  - label_encoder.pkl
+
+🖼️ VISUALIZACIONES EN /reports:
+  - distribucion_clases.png
+  - analisis_dimensiones.png
+  - muestras_imagenes.png
+  - analisis_intensidad.png
+  - comparacion_preprocesamiento.png
+
+🔗 CARACTERÍSTICAS PARA FUSIÓN:
+  - image_id: Identificador único
+  - clase_encoded: Etiqueta numérica
+  - mean_intensity, std_intensity, contrast, etc.: Características estadísticas
+
+✅ PRÓXIMOS PASOS:
+  1. Cargar el dataset tabular de ictus
+  2. Crear un identificador común entre ambos datasets
+  3. Fusionar usando pandas merge() o join()
+  4. Aplicar técnicas de ensemble o modelos multimodales
+
+📂 ESTRUCTURA DE ARCHIVOS:
+project/
+├── data/
+│   ├── X_imagenes_procesadas.npy
+│   ├── y_etiquetas.npy
+│   ├── metadata_imagenes_completa.csv
+│   └── label_encoder.pkl
+├── reports/
+│   ├── distribucion_clases.png
+│   ├── analisis_dimensiones.png
+│   ├── muestras_imagenes.png
+│   ├── analisis_intensidad.png
+│   ├── comparacion_preprocesamiento.png
+│   └── resumen_preprocesamiento.txt
+└── notebooks/
+    └── [tu notebook actual]
