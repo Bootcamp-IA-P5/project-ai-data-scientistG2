@@ -20,17 +20,17 @@ def load_model_and_metadata():
     """Cargar el modelo MLP, scaler y metadatos guardados"""
     try:
         # Cargar modelo desde pickle
-        model_path = "../data/mlp_model.pkl"
+        model_path = "data/mlp_model.pkl"
         with open(model_path, 'rb') as f:
             model = pickle.load(f)
         
         # Cargar scaler
-        scaler_path = "../data/scaler.pkl"
+        scaler_path = "data/scaler.pkl"
         with open(scaler_path, 'rb') as f:
             scaler = pickle.load(f)
         
         # Cargar metadatos
-        metadata_path = "../data/modelo_info.pkl"
+        metadata_path = "data/modelo_info.pkl"
         metadata = joblib.load(metadata_path)
         
         st.success("✅ Modelo MLP y scaler cargados correctamente")
@@ -145,8 +145,9 @@ def display_real_prediction(prediction, probability, threshold, metadata):
     
     # Barra de progreso visual
     st.markdown("### 📊 Análisis de Riesgo:")
-    progress_color = "red" if prediction == 1 else "green"
-    st.progress(probability, text=f"Probabilidad de Riesgo: {probability_percent:.2f}%")
+    # Convertir probability a float nativo de Python para evitar error con float32
+    probability_float = float(probability)
+    st.progress(probability_float, text=f"Probabilidad de Riesgo: {probability_percent:.2f}%")
     
     st.info("⚠️ **Descargo:** Este es un sistema de apoyo diagnóstico. Consulte siempre a un profesional médico.")
 
@@ -193,7 +194,6 @@ def main_app():
     # CARACTERÍSTICAS BINARIAS
     hypertension = st.sidebar.radio("Hipertensión", (0, 1), format_func=lambda x: 'Sí' if x == 1 else 'No')
     heart_disease = st.sidebar.radio("Enfermedad Cardíaca", (0, 1), format_func=lambda x: 'Sí' if x == 1 else 'No')
-    ever_married = st.sidebar.radio("¿Alguna vez Casado?", ('Yes', 'No'))
 
     # CARACTERÍSTICAS NUMÉRICAS
     # Usamos un slider para edad y una entrada numérica para los demás
@@ -213,7 +213,7 @@ def main_app():
         'age': age,
         'hypertension': hypertension,
         'heart_disease': heart_disease,
-        'ever_married': ever_married,
+        'ever_married': 'Yes',  # Valor fijo (campo removido de la interfaz por bajo impacto)
         'work_type': work_type,
         'Residence_type': residence_type,
         'avg_glucose_level': avg_glucose_level,
