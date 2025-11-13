@@ -470,3 +470,4 @@ with tab4:
 # FOOTER DE LA APLICACIÓN
 st.markdown("---")
 st.markdown(f"**Stroke Risk Predictor** - Herramienta de apoyo | Modelos disponibles: {len(available_models)}/5")
+st.markdown("Desarrollado con ❤️ usando Streamlit")
