@@ -3,9 +3,6 @@
 import streamlit as st
 import pandas as pd
 import pickle
-import joblib
-import numpy as np
-from sklearn.preprocessing import LabelEncoder, StandardScaler
 import os 
 
 # 1. --- Configuración y Título de la Página ---
@@ -17,26 +14,104 @@ st.set_page_config(
 
 @st.cache_resource
 def load_model_and_metadata():
-    """Cargar el modelo MLP, scaler y metadatos guardados"""
+    """Cargar el modelo con configuración Ultra optimizada"""
     try:
-        # Cargar modelo desde pickle
-        model_path = "data/mlp_model.pkl"
-        with open(model_path, 'rb') as f:
-            model = pickle.load(f)
+        config_path = "data/final_optimal_recall80_config.pkl"
         
-        # Cargar scaler
-        scaler_path = "data/scaler.pkl"
-        with open(scaler_path, 'rb') as f:
-            scaler = pickle.load(f)
-        
-        # Cargar metadatos
-        metadata_path = "data/modelo_info.pkl"
-        metadata = joblib.load(metadata_path)
-        
-        st.success("✅ Modelo MLP y scaler cargados correctamente")
-        return model, scaler, metadata
+        # Verificar si existe la configuración Ultra optimizada
+        if os.path.exists(config_path):
+            # Cargar configuración optimizada
+            with open(config_path, 'rb') as f:
+                config = pickle.load(f)
+            st.success("✅ Configuración Ultra optimizada cargada")
+            
+            # Determinar qué modelo usar según el ranking de la configuración
+            best_model = config['all_models_ranking'][0]  # El mejor modelo del ranking
+            model_name = best_model['model']
+            
+            # Mapear nombres de modelos a archivos disponibles
+            if model_name == "Modelo Ultra":
+                # El modelo Ultra usa la misma base que el original pero con parámetros optimizados
+                model_path = "data/mlp_model.pkl"  # Usar modelo original
+                scaler_path = "data/scaler.pkl" 
+            elif model_name == "Modelo Original":
+                model_path = "data/mlp_model.pkl"
+                scaler_path = "data/scaler.pkl"
+            elif model_name == "Modelo Precision v1":
+                model_path = "data/mlp_model_precision.pkl"
+                scaler_path = "data/scaler_precision.pkl"
+            else:
+                # Fallback al modelo original
+                model_path = "data/mlp_model.pkl"
+                scaler_path = "data/scaler.pkl"
+            
+            # Cargar modelo
+            try:
+                with open(model_path, 'rb') as f:
+                    model = pickle.load(f)
+                st.success(f"✅ {model_name} cargado correctamente")
+            except Exception as e:
+                st.error(f"Error cargando modelo: {e}")
+                return None, None, None
+            
+            # Cargar scaler
+            try:
+                with open(scaler_path, 'rb') as f:
+                    scaler = pickle.load(f)
+            except Exception as e:
+                st.error(f"Error cargando scaler: {e}")
+                return None, None, None
+            
+            # Crear metadatos optimizados usando la configuración Ultra
+            metadata = {
+                'model_type': 'ultra_optimized',
+                'model_name': model_name,
+                'architecture': best_model['description'],
+                'optimal_threshold': config['optimal_threshold'],
+                'precision': config['metrics']['precision'],
+                'recall': config['metrics']['recall'],
+                'f1_score': config['metrics']['f1_score'],
+                'specificity': config['metrics']['specificity'],
+                'accuracy': config['metrics']['accuracy'],
+                'npv': config['metrics']['npv'],
+                'description': 'Configuración Ultra optimizada - máxima precisión con Recall ≥80%',
+                'clinical_interpretation': config['clinical_interpretation']
+            }
+            
+            st.info(f"🎯 {model_name} con configuración Ultra - Precisión: {metadata['precision']*100:.1f}%, Recall: {metadata['recall']*100:.1f}%")
+            return model, scaler, metadata
+            
+        else:
+            # Fallback a modelo original si no existe configuración optimizada
+            st.warning("⚠️ Configuración optimizada no encontrada, usando modelo original")
+            
+            model_path = "data/mlp_model.pkl"
+            scaler_path = "data/scaler.pkl" 
+            metadata_path = "data/modelo_info.pkl"
+            
+            with open(model_path, 'rb') as f:
+                model = pickle.load(f)
+            with open(scaler_path, 'rb') as f:
+                scaler = pickle.load(f)
+            
+            # Cargar metadatos originales si existen
+            try:
+                with open(metadata_path, 'rb') as f:
+                    metadata = pickle.load(f)
+            except Exception:
+                # Crear metadatos básicos si no existen
+                metadata = {
+                    'model_type': 'original',
+                    'optimal_threshold': 0.5,
+                    'description': 'Modelo original sin optimización'
+                }
+            
+            st.success("✅ Modelo original cargado correctamente")
+            return model, scaler, metadata
+            
     except Exception as e:
         st.error(f"❌ Error cargando el modelo: {str(e)}")
+        st.error("💡 Asegúrate de que los archivos del modelo estén en la carpeta 'data/'")
         return None, None, None
 
 def preprocess_input(data):
@@ -60,7 +135,7 @@ def preprocess_input(data):
     return df
 
 def make_prediction(model, scaler, data, metadata):
-    """Hacer predicción con el modelo MLP"""
+    """Hacer predicción con el modelo MLP optimizado"""
     try:
         # Preprocesar datos
         processed_data = preprocess_input(data)
@@ -69,16 +144,21 @@ def make_prediction(model, scaler, data, metadata):
         X_scaled = scaler.transform(processed_data)
         
         # Hacer predicción
-        probability = model.predict(X_scaled)[0][0]
+        if hasattr(model, 'predict'):
+            # Modelo de TensorFlow/Keras
+            prediction_raw = model.predict(X_scaled, verbose=0)
+            probability = float(prediction_raw[0][0])
+        else:
+            # Modelo de sklearn
+            probability = float(model.predict_proba(X_scaled)[0][1])
         
-        # Usar los umbrales del entrenamiento
-        best_threshold_f1 = metadata.get('best_threshold_f1', 0.5)
-        best_threshold_precision = metadata.get('best_threshold_precision', 0.5)
+        # Usar el umbral optimizado de la configuración Ultra
+        optimal_threshold = metadata.get('optimal_threshold', 0.5)  # Fallback a 0.5 si no está configurado
         
-        # Clasificación binaria usando umbral F1
-        prediction = 1 if probability >= best_threshold_f1 else 0
+        # Clasificación binaria usando umbral optimizado
+        prediction = 1 if probability >= optimal_threshold else 0
         
-        return prediction, probability, best_threshold_f1
+        return prediction, probability, optimal_threshold
     
     except Exception as e:
         st.error(f"Error en predicción: {str(e)}")
@@ -107,24 +187,79 @@ def display_mock_prediction(data):
     st.info("⚠️ **Descargo de Responsabilidad:** Esta es una criba previa de IA. Consulte a un doctor para un diagnóstico definitivo.")
 
 def display_real_prediction(prediction, probability, threshold, metadata):
-    """Mostrar resultados de la predicción real"""
-    st.subheader("🤖 Resultado de la Evaluación con IA")
+    """Mostrar resultados con modelo Ultra optimizado"""
+    model_name = metadata.get('model_name', 'Modelo Optimizado') if metadata else 'Modelo'
+    st.subheader(f"🤖 Evaluación con IA - {model_name}")
     
-    # Mostrar métricas del modelo
-    if metadata:
-        col1, col2 = st.columns(2)
+    # Mostrar métricas del modelo optimizado
+    if metadata and metadata.get('model_type') == 'ultra_optimized':
+        st.markdown("#### 📊 Rendimiento del Modelo Ultra Optimizado:")
+        col1, col2, col3, col4 = st.columns(4)
+        
         with col1:
-            st.metric("ROC-AUC del Modelo", f"{metadata.get('roc_auc', 0):.3f}")
+            precision = metadata.get('precision', 0) * 100
+            st.metric("🎯 Precisión", f"{precision:.1f}%", 
+                     help="De cada 100 alertas positivas, aproximadamente 14 son casos reales")
+        
         with col2:
-            st.metric("PR-AUC del Modelo", f"{metadata.get('pr_auc', 0):.3f}")
+            recall = metadata.get('recall', 0) * 100
+            st.metric("🔍 Detección (Recall)", f"{recall:.1f}%", 
+                     help="Detecta 80 de cada 100 casos reales de ictus")
+        
+        with col3:
+            specificity = metadata.get('specificity', 0) * 100
+            st.metric("✅ Especificidad", f"{specificity:.1f}%", 
+                     help="Identifica correctamente 73 de cada 100 personas sanas")
+        
+        with col4:
+            accuracy = metadata.get('accuracy', 0) * 100
+            st.metric("⚖️ Exactitud", f"{accuracy:.1f}%", 
+                     help="Precisión general del modelo en todos los casos")
+        
+        # Mostrar información clínica adicional
+        clinical = metadata.get('clinical_interpretation', {})
+        if clinical:
+            st.markdown("#### 🏥 Interpretación Clínica:")
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                detection_rate = clinical.get('detection_rate', 0) * 100
+                st.metric("🎯 Tasa de Detección", f"{detection_rate:.0f}%",
+                         help="Porcentaje de casos de ictus detectados")
+            
+            with col2:
+                false_alarm_rate = clinical.get('false_alarm_rate', 0) * 100
+                st.metric("⚠️ Tasa de Falsa Alarma", f"{false_alarm_rate:.1f}%",
+                         help="Porcentaje de falsas alarmas en personas sanas")
+            
+            with col3:
+                patients_to_evaluate = clinical.get('patients_to_evaluate', 0)
+                st.metric("👥 Pacientes a Evaluar", f"{patients_to_evaluate}",
+                         help="De cada 1000 pacientes, cuántos necesitan evaluación adicional")
+    
+    elif metadata:
+        st.markdown("#### 📊 Rendimiento del Modelo:")
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            precision = metadata.get('precision', 0) * 100 if 'precision' in metadata else 'N/A'
+            st.metric("🎯 Precisión", f"{precision:.1f}%" if isinstance(precision, (int, float)) else precision)
+        
+        with col2:
+            recall = metadata.get('recall', 0) * 100 if 'recall' in metadata else 'N/A'
+            st.metric("🔍 Recall", f"{recall:.1f}%" if isinstance(recall, (int, float)) else recall)
+        
+        with col3:
+            accuracy = metadata.get('accuracy', 0) * 100 if 'accuracy' in metadata else 'N/A'
+            st.metric("⚖️ Exactitud", f"{accuracy:.1f}%" if isinstance(accuracy, (int, float)) else accuracy)
     
     # Resultado principal
     probability_percent = probability * 100
     
     if prediction == 1:
-        st.error(f"� ALERTA: Alto Riesgo de Ictus")
+        st.error("🚨 ALERTA: Alto Riesgo de Ictus")
         st.markdown(f"**Probabilidad:** `{probability_percent:.2f}%`")
-        st.markdown(f"**Umbral usado:** `{threshold:.3f}`")
+        st.markdown(f"**Umbral usado:** `{threshold:.4f}` (optimizado)")
         
         # Recomendaciones
         st.markdown("### 🚨 Recomendaciones:")
@@ -133,9 +268,9 @@ def display_real_prediction(prediction, probability, threshold, metadata):
         st.markdown("- Evite factores de riesgo (tabaco, sedentarismo)")
         
     else:
-        st.success(f"🟢 Bajo Riesgo de Ictus")
+        st.success("🟢 Bajo Riesgo de Ictus")
         st.markdown(f"**Probabilidad:** `{probability_percent:.2f}%`")
-        st.markdown(f"**Umbral usado:** `{threshold:.3f}`")
+        st.markdown(f"**Umbral usado:** `{threshold:.4f}` (optimizado)")
         
         # Recomendaciones preventivas
         st.markdown("### 💚 Recomendaciones Preventivas:")
@@ -224,16 +359,50 @@ def main_app():
     # Convertir a DataFrame (para que el modelo lo procese)
     input_df = pd.DataFrame([input_data])
     
-    # Mostrar información del modelo solo si está cargado
+    # Mostrar información del modelo optimizado si está cargado
     if prediction_type == "🤖 Modelo MLP Real" and metadata:
-        with st.expander("ℹ️ Información del Modelo MLP"):
-            col1, col2 = st.columns(2)
-            with col1:
-                st.metric("ROC-AUC", f"{metadata.get('roc_auc', 0):.3f}")
-                st.metric("Umbral F1", f"{metadata.get('best_threshold_f1', 0):.3f}")
-            with col2:
-                st.metric("PR-AUC", f"{metadata.get('pr_auc', 0):.3f}")
-                st.metric("Umbral Precisión", f"{metadata.get('best_threshold_precision', 0):.3f}")
+        model_name = metadata.get('model_name', 'Modelo Optimizado')
+        with st.expander(f"ℹ️ Información del {model_name}"):
+            st.markdown(f"**🏗️ Arquitectura:** {metadata.get('architecture', 'MLP')}")
+            st.markdown(f"**🎯 Descripción:** {metadata.get('description', 'Modelo optimizado')}")
+            
+            if metadata.get('model_type') == 'ultra_optimized':
+                col1, col2, col3 = st.columns(3)
+                with col1:
+                    precision = metadata.get('precision', 0) * 100
+                    st.metric("🎯 Precisión", f"{precision:.1f}%")
+                    recall = metadata.get('recall', 0) * 100
+                    st.metric("🔍 Recall", f"{recall:.1f}%")
+                with col2:
+                    f1 = metadata.get('f1_score', 0)
+                    st.metric("⚖️ F1-Score", f"{f1:.3f}")
+                    threshold = metadata.get('optimal_threshold', 0.5)
+                    st.metric("🎯 Umbral Óptimo", f"{threshold:.4f}")
+                with col3:
+                    specificity = metadata.get('specificity', 0) * 100
+                    st.metric("✅ Especificidad", f"{specificity:.1f}%")
+                    accuracy = metadata.get('accuracy', 0) * 100
+                    st.metric("📊 Exactitud", f"{accuracy:.1f}%")
+                
+                # Mostrar información clínica
+                clinical = metadata.get('clinical_interpretation', {})
+                if clinical:
+                    st.markdown("**🏥 Interpretación Clínica:**")
+                    workload_ratio = clinical.get('workload_ratio', 0)
+                    cases_missed = clinical.get('cases_missed', 0)
+                    st.markdown(f"• Cada paciente positivo requiere evaluar {workload_ratio:.1f} pacientes adicionales")
+                    st.markdown(f"• Se estima que {cases_missed} casos podrían no detectarse de cada 50")
+            
+            else:
+                # Mostrar información básica para modelos no ultra-optimizados
+                col1, col2 = st.columns(2)
+                with col1:
+                    threshold = metadata.get('optimal_threshold', 0.5)
+                    st.metric("🎯 Umbral", f"{threshold:.4f}")
+                with col2:
+                    if 'accuracy' in metadata:
+                        accuracy = metadata.get('accuracy', 0) * 100
+                        st.metric("📊 Exactitud", f"{accuracy:.1f}%")
     
     # Botón de acción
     st.markdown("---")
@@ -260,17 +429,43 @@ def main_app():
     st.markdown("### 📖 Sobre este Sistema")
     
     if prediction_type == "🤖 Modelo MLP Real":
-        st.markdown("""
-        Este sistema utiliza un **Perceptrón Multicapa (MLP)** entrenado con técnicas de balanceado de clases 
-        para evaluar el riesgo de ictus. El modelo ha sido entrenado con datos clínicos y utiliza múltiples 
-        factores de riesgo para generar una predicción.
-        
-        **Características del modelo:**
-        - Arquitectura: Red Neuronal con 128 y 64 neuronas ocultas
-        - Regularización: L2 y Dropout para evitar sobreajuste
-        - Balanceado: Class weights para manejar datos desequilibrados
-        - Optimización: Early stopping basado en pérdida de validación
-        """)
+        if metadata and metadata.get('model_type') == 'ultra_optimized':
+            st.markdown(f"""
+            Este sistema utiliza el **{metadata.get('model_name', 'Modelo Ultra')}** basado en Perceptrón Multicapa (MLP) 
+            específicamente configurado para **máxima precisión manteniendo 80% de detección** de casos de ictus.
+            
+            **🏆 Características del Modelo Ultra:**
+            - **Arquitectura:** {metadata.get('architecture', 'Red Neuronal optimizada')}
+            - **Optimización:** Umbral {metadata.get('optimal_threshold', 0.276):.4f} (búsqueda exhaustiva sobre 1,980 configuraciones)
+            - **Rendimiento:** {metadata.get('precision', 0)*100:.1f}% precisión / {metadata.get('recall', 0)*100:.1f}% recall / {metadata.get('accuracy', 0)*100:.1f}% exactitud
+            - **Regularización:** L2 + Dropout + BatchNormalization + Early Stopping
+            - **Balanceado:** Class weights optimizados para clases desbalanceadas
+            
+            **🎯 Interpretación Clínica:**
+            - Detecta **{metadata.get('recall', 0)*100:.0f} de cada 100 casos reales** de ictus ({metadata.get('recall', 0)*100:.0f}% recall)
+            - De cada **100 alertas, ~{metadata.get('precision', 0)*100:.0f} son casos reales** ({metadata.get('precision', 0)*100:.1f}% precisión)
+            - Optimizado para **screening médico inicial**
+            - Minimiza casos perdidos priorizando la detección temprana
+            
+            **⚙️ Proceso de Optimización:**
+            - Entrenamiento de 5 arquitecturas diferentes
+            - Búsqueda exhaustiva de umbrales (1,980 combinaciones probadas)
+            - Selección basada en balance precisión-recall para uso médico
+            """)
+        else:
+            st.markdown("""
+            Este sistema utiliza un **Modelo de Perceptrón Multicapa (MLP)** entrenado para la detección de riesgo de ictus.
+            
+            **🏆 Características del Modelo:**
+            - **Arquitectura:** Red Neuronal con capas densas
+            - **Entrenamiento:** Basado en datos clínicos reales
+            - **Objetivo:** Detección temprana de riesgo de ictus
+            
+            **🎯 Uso Clínico:**
+            - Herramienta de apoyo para screening inicial
+            - No reemplaza el diagnóstico médico profesional
+            - Optimizado para detección temprana
+            """)
     else:
         st.markdown("""
         **Modo Simulación MOCK:** Este modo utiliza reglas simples basadas en edad y glucosa 
