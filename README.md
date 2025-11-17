@@ -5,6 +5,7 @@ Sistema de predicción de riesgo de ictus usando Machine Learning con arquitectu
 ## 📋 Descripción
 
 Aplicación completa de predicción de riesgo de ictus que integra:
+
 - **Backend API** (FastAPI) para almacenar historial de predicciones
 - **Frontend** (Streamlit) con 5 pestañas interactivas
 - **Modelos ML** (LogisticRegression + LightGBM) con threshold optimization
@@ -68,11 +69,13 @@ python -m venv .venv
 ### 3. Activar entorno virtual
 
 **Windows:**
+
 ```bash
 .venv\Scripts\activate
 ```
 
 **Linux/Mac:**
+
 ```bash
 source .venv/bin/activate
 ```
@@ -83,30 +86,80 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+### 5. Entrenar el modelo
+
+**IMPORTANTE**: Antes de usar la aplicación, debes entrenar el modelo:
+
+```bash
+cd notebooks
+python train_model_tuning.py
+```
+
+Este proceso:
+
+- ✅ Carga el dataset preprocesado
+- ✅ Entrena múltiples modelos (LogisticRegression, LightGBM, etc.)
+- ✅ Optimiza hiperparámetros con Optuna
+- ✅ Genera el archivo `.pkl` en `notebooks/models/`
+- ⏱️ Duración estimada: 5-15 minutos
+
+### 6. Ejecutar preprocesamiento (Opcional)
+
+Si necesitas regenerar los datasets procesados o usar las pestañas de EDA/Evaluación:
+
+1. **Abrir Jupyter**:
+
+   ```bash
+   jupyter notebook
+   ```
+
+2. **Navegar a** `notebooks/Preprocessing.ipynb`
+
+3. **Ejecutar todas las celdas** (Cell → Run All)
+
+Esto generará:
+
+- `data/processed/stroke_data_processed.csv`
+- `data/processed/stroke_data_processed_test.csv`
+- `data/preprocessed_data.pkl`
+
 ---
 
 ## 📦 Archivos Necesarios
 
 ### ✅ Archivos Críticos (Deben existir)
 
-| Archivo | Ruta | Descripción | Generado por |
-|---------|------|-------------|--------------|
-| **Dataset original** | `data/stroke_dataset.csv` | Datos originales de ictus | Manual |
-| **Modelo entrenado** | `notebooks/models/ictus_model_20251113_211435.pkl` | Modelo ML entrenado | `train_model_tuning.py` |
-| **Backend main** | `backend/database/main.py` | API FastAPI | Ya existe |
-| **Frontend app** | `frontend/app.py` | Aplicación Streamlit | Ya existe |
+| Archivo              | Ruta                                 | Descripción               | Generado por                |
+| -------------------- | ------------------------------------ | ------------------------- | --------------------------- |
+| **Dataset original** | `data/stroke_dataset.csv`            | Datos originales de ictus | Manual (incluido en repo)   |
+| **Modelo entrenado** | `notebooks/models/ictus_model_*.pkl` | Modelo ML entrenado       | **`train_model_tuning.py`** |
+| **Backend main**     | `backend/database/main.py`           | API FastAPI               | Ya existe                   |
+| **Frontend app**     | `frontend/app.py`                    | Aplicación Streamlit      | Ya existe                   |
 
 ### ⚠️ Archivos Opcionales (Se generan automáticamente)
 
-| Archivo | Ruta | Descripción | Generado por |
-|---------|------|-------------|--------------|
-| **Datasets procesados** | `data/processed/stroke_data_processed.csv` | Para EDA/Evaluación | `Preprocessing.ipynb` |
-| **Dataset test** | `data/processed/stroke_data_processed_test.csv` | Para evaluación | `Preprocessing.ipynb` |
-| **Base de datos** | `backend/database/predictions.db` | Historial de predicciones | FastAPI (automático) |
+| Archivo                 | Ruta                                            | Descripción               | Generado por          |
+| ----------------------- | ----------------------------------------------- | ------------------------- | --------------------- |
+| **Datasets procesados** | `data/processed/stroke_data_processed.csv`      | Para EDA/Evaluación       | `Preprocessing.ipynb` |
+| **Dataset test**        | `data/processed/stroke_data_processed_test.csv` | Para evaluación           | `Preprocessing.ipynb` |
+| **Base de datos**       | `backend/database/predictions.db`               | Historial de predicciones | FastAPI (automático)  |
 
 ---
 
 ## 🎯 Uso del Sistema
+
+### ⚠️ PREREQUISITO: Entrenar el Modelo
+
+**Antes de usar la aplicación por primera vez**, debes entrenar el modelo:
+
+```bash
+cd notebooks
+python train_model_tuning.py
+```
+
+✅ Esto genera el archivo `notebooks/models/ictus_model_YYYYMMDD_HHMMSS.pkl` necesario para las predicciones.
+
+---
 
 ### Opción 1: Solo Predicciones Individuales (Sin Backend)
 
@@ -133,6 +186,7 @@ uvicorn main:app --reload
 ```
 
 Salida esperada:
+
 ```
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 INFO:     Started reloader process [xxxxx] using StatReload
@@ -150,6 +204,7 @@ streamlit run frontend/app.py
 ```
 
 Salida esperada:
+
 ```
 You can now view your Streamlit app in your browser.
 Local URL: http://localhost:8501
@@ -201,6 +256,7 @@ pytest test/test_train_model_tuning.py -v
 
 - **POST /predictions/**  
   Guardar nueva predicción
+
   ```json
   {
     "input_data": {...},
@@ -218,27 +274,32 @@ pytest test/test_train_model_tuning.py -v
 ### 🔹 Frontend Streamlit
 
 #### Pestaña 1: 📊 EDA (Exploración de Datos)
+
 - Visualización de distribución de datos
 - Matriz de correlación
 - Análisis de riesgo por edad
 
 #### Pestaña 2: 🔮 Evaluación del Modelo
+
 - Evaluación en datasets de test/train
 - Matriz de confusión
 - Métricas de clasificación
 
 #### Pestaña 3: 📈 Métricas del Modelo
+
 - Accuracy, Precision, Recall, F1-Score
 - AUC-ROC
 - Distribución de probabilidades
 
 #### Pestaña 4: 🎯 Predicción Individual
+
 - Formulario interactivo
 - Predicción en tiempo real
 - Recomendaciones médicas
 - Guardado automático en backend
 
 #### Pestaña 5: 📜 Historial de Predicciones
+
 - Visualización de predicciones pasadas
 - Estadísticas del historial
 - Gráficos de tendencias
@@ -280,25 +341,40 @@ Ver [MODEL_FEATURES.md](MODEL_FEATURES.md) para detalles completos.
 
 ### Error: "No se encontraron modelos entrenados"
 
-**Solución**: Verificar que exista el archivo del modelo:
-```bash
-ls notebooks/models/ictus_model_*.pkl
-```
+**Causa**: No has ejecutado el script de entrenamiento.
 
-Si no existe, entrenar el modelo:
-```bash
-cd notebooks
-python train_model_tuning.py
-```
+**Solución**:
+
+1. Verificar que no exista el modelo:
+
+   ```bash
+   ls notebooks/models/ictus_model_*.pkl
+   ```
+
+2. Si no existe, entrenar el modelo (OBLIGATORIO):
+
+   ```bash
+   cd notebooks
+   python train_model_tuning.py
+   ```
+
+3. Esperar a que termine el entrenamiento (5-15 minutos)
+
+4. Verificar que se creó el modelo:
+   ```bash
+   ls notebooks/models/
+   ```
 
 ### Error: "Backend no disponible"
 
 **Solución**: Verificar que el backend esté corriendo:
+
 ```bash
 curl http://localhost:8000
 ```
 
 Si no responde, iniciar el backend:
+
 ```bash
 cd backend/database
 uvicorn main:app --reload
@@ -311,6 +387,7 @@ uvicorn main:app --reload
 ### Error: "FileNotFoundError: stroke_data_processed.csv"
 
 **Solución**: Los datasets procesados son opcionales. Opciones:
+
 1. Usar solo la pestaña de Predicción Individual (funciona sin datasets)
 2. Generar los datasets ejecutando `notebooks/Preprocessing.ipynb`
 
@@ -318,19 +395,19 @@ uvicorn main:app --reload
 
 ## 🛠️ Tecnologías Utilizadas
 
-| Categoría | Tecnología | Versión |
-|-----------|-----------|---------|
-| **Backend** | FastAPI | 0.115.5 |
-| | Uvicorn | 0.34.0 |
-| | SQLAlchemy | 2.0.44 |
-| **Frontend** | Streamlit | 1.51.0 |
-| | Plotly | 6.4.0 |
-| **ML** | scikit-learn | 1.7.2 |
-| | LightGBM | 4.6.0 |
-| | imbalanced-learn | 0.14.0 |
-| **Data** | pandas | 2.3.3 |
-| | numpy | 2.3.4 |
-| **DB** | SQLite | (built-in) |
+| Categoría    | Tecnología       | Versión    |
+| ------------ | ---------------- | ---------- |
+| **Backend**  | FastAPI          | 0.115.5    |
+|              | Uvicorn          | 0.34.0     |
+|              | SQLAlchemy       | 2.0.44     |
+| **Frontend** | Streamlit        | 1.51.0     |
+|              | Plotly           | 6.4.0      |
+| **ML**       | scikit-learn     | 1.7.2      |
+|              | LightGBM         | 4.6.0      |
+|              | imbalanced-learn | 0.14.0     |
+| **Data**     | pandas           | 2.3.3      |
+|              | numpy            | 2.3.4      |
+| **DB**       | SQLite           | (built-in) |
 
 ---
 
@@ -350,6 +427,7 @@ Este proyecto es parte del Bootcamp de IA.
 ## 📞 Soporte
 
 Para problemas o preguntas:
+
 1. Revisar [MODEL_FEATURES.md](MODEL_FEATURES.md) para detalles del modelo
 2. Verificar que todos los archivos necesarios existan
 3. Revisar la sección de Troubleshooting arriba
