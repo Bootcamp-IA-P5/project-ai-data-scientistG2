@@ -17,6 +17,7 @@ from plotly.subplots import make_subplots
 import joblib
 import os
 from pathlib import Path
+import glob
 
 # IMPORTACIÓN DEL CLIENTE API
 from api_client import (
@@ -46,13 +47,34 @@ except NameError:
 st.title("🧠 Stroke Risk Prediction System")
 st.markdown("---")
 
+
+# FUNCIÓN PARA BUSCAR EL MODELO MÁS RECIENTE
+def find_latest_model():
+    """Busca automáticamente el archivo .pkl más reciente en la carpeta de modelos."""
+    models_dir = os.path.join(SCRIPT_DIR, "notebooks", "models")
+
+    # Buscar todos los archivos .pkl que empiecen con 'ictus_model_'
+    pattern = os.path.join(models_dir, "ictus_model_*.pkl")
+    model_files = glob.glob(pattern)
+
+    if not model_files:
+        return None
+
+    # Obtener el archivo más reciente basado en la fecha de modificación
+    latest_model = max(model_files, key=os.path.getmtime)
+    return latest_model
+
+
 # CONFIGURACIÓN DE MODELOS DISPONIBLES
-# Asegúrate de que los archivos .pkl en 'notebooks/models/' existan
-AVAILABLE_MODELS = {
-    "Stroke Prediction Model": os.path.join(
-        SCRIPT_DIR, "notebooks", "models", "ictus_model_20251113_211435.pkl"
-    )
-}
+# Buscar automáticamente el modelo más reciente
+latest_model_path = find_latest_model()
+
+if latest_model_path:
+    model_name = os.path.basename(latest_model_path)
+    AVAILABLE_MODELS = {f"Stroke Prediction Model ({model_name})": latest_model_path}
+else:
+    # Fallback en caso de que no se encuentre ningún modelo
+    AVAILABLE_MODELS = {}
 
 # --- FUNCIONES DE CARGA Y VERIFICACIÓN ---
 
