@@ -60,3 +60,6 @@ coverage.xml
 # Otros
 .DS_Store
 Thumbs.db*
+
+find_20_features.py
+inspect_model.py
