@@ -7,9 +7,10 @@ Sistema de predicción de riesgo de ictus usando Machine Learning con arquitectu
 Aplicación completa de predicción de riesgo de ictus que integra:
 
 - **Backend API** (FastAPI) para almacenar historial de predicciones
-- **Frontend** (Streamlit) con 5 pestañas interactivas
-- **Modelos ML** (LogisticRegression + LightGBM) con threshold optimization
+- **Frontend** (Streamlit) con 6 pestañas interactivas
+- **Modelo ML** (XGBoost) optimizado con Optuna para alta Recall (82%)
 - **Base de datos** (SQLite) para persistencia de datos
+- **Sistema de riesgo** en 3 niveles (BAJO/MODERADO/ALTO)
 
 ---
 
@@ -26,25 +27,29 @@ project-ai-data-scientistG2/
 │
 ├── frontend/
 │   ├── api_client.py            # Cliente HTTP para backend
-│   └── app.py                   # Aplicación Streamlit
+│   └── app.py                   # Aplicación Streamlit (6 tabs)
 │
 ├── notebooks/
-│   ├── Preprocessing.ipynb      # Preprocesamiento de datos
-│   ├── EDA.ipynb                # Análisis exploratorio
-│   ├── train_model_tuning.py    # Entrenamiento de modelos
-│   └── models/
-│       └── ictus_model_*.pkl    # Modelos entrenados
+│   ├── PreprocessingCleaned.ipynb  # Preprocesamiento final (25 features)
+│   ├── XGBoost.ipynb               # Entrenamiento XGBoost con Optuna
+│   ├── EDA.ipynb                   # Análisis exploratorio
+│   ├── CNNImage.ipynb              # Modelo de imágenes (OPCIONAL)
+│   └── MLP_classweight.ipynb       # Modelo MLP (EN DESARROLLO)
+│
+├── models/
+│   ├── xgboost_modelo_final.pkl    # Modelo XGBoost optimizado
+│   └── preprocessed_data.pkl       # Scaler y metadatos
 │
 ├── data/
-│   ├── stroke_dataset.csv       # Dataset original
+│   ├── stroke_dataset.csv          # Dataset original (3984 registros)
 │   └── processed/
-│       ├── stroke_data_processed.csv       # Dataset entrenamiento procesado
-│       └── stroke_data_processed_test.csv  # Dataset test procesado
+│       ├── stroke_data_processed.csv       # Dataset entrenamiento (25 features + target)
+│       └── stroke_data_processed_test.csv  # Dataset test (997 registros)
 │
 ├── test/
 │   └── test_train_model_tuning.py
 │
-├── MODEL_FEATURES.md            # Documentación de features del modelo
+├── MODEL_FEATURES.md            # Documentación detallada de 25 features
 ├── requirements.txt             # Dependencias del proyecto
 └── README.md                    # Este archivo
 ```
@@ -86,78 +91,82 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 5. Entrenar el modelo
+### 5. Generar datos preprocesados y entrenar modelo
 
-**IMPORTANTE**: Antes de usar la aplicación, debes entrenar el modelo:
+**IMPORTANTE**: Debes ejecutar los notebooks en orden:
+
+#### **Paso 1: Preprocesamiento de datos**
 
 ```bash
-cd notebooks
-python train_model_tuning.py
+jupyter notebook
 ```
 
-Este proceso:
+Abre y ejecuta `notebooks/PreprocessingCleaned.ipynb` (Run All)
 
-- ✅ Carga el dataset preprocesado
-- ✅ Entrena múltiples modelos (LogisticRegression, LightGBM, etc.)
-- ✅ Optimiza hiperparámetros con Optuna
-- ✅ Genera el archivo `.pkl` en `notebooks/models/`
-- ⏱️ Duración estimada: 5-15 minutos
+Genera:
 
-### 6. Ejecutar preprocesamiento (Opcional)
+- ✅ `data/processed/stroke_data_processed.csv` (3984 registros, 25 features + target)
+- ✅ `data/processed/stroke_data_processed_test.csv` (997 registros)
+- ✅ `models/preprocessed_data.pkl` (scaler + metadatos)
 
-Si necesitas regenerar los datasets procesados o usar las pestañas de EDA/Evaluación:
+#### **Paso 2: Entrenar modelo XGBoost**
 
-1. **Abrir Jupyter**:
+Abre y ejecuta `notebooks/XGBoost.ipynb` (Run All)
 
-   ```bash
-   jupyter notebook
-   ```
+Genera:
 
-2. **Navegar a** `notebooks/Preprocessing.ipynb`
+- ✅ `models/xgboost_modelo_final.pkl` (modelo + pipeline + metadatos)
+- ⏱️ Duración: ~34 segundos (80 trials Optuna)
+- 📊 Métricas: Recall 82%, Precision 16%, F1 26.8%, AUC 84.4%
 
-3. **Ejecutar todas las celdas** (Cell → Run All)
-
-Esto generará:
-
-- `data/processed/stroke_data_processed.csv`
-- `data/processed/stroke_data_processed_test.csv`
-- `data/preprocessed_data.pkl`
+**Nota**: Los modelos ya están entrenados en el repositorio, este paso es opcional salvo que quieras reentrenar.
 
 ---
 
 ## 📦 Archivos Necesarios
 
-### ✅ Archivos Críticos (Deben existir)
+### ✅ Archivos Críticos (Ya incluidos en el repositorio)
 
-| Archivo              | Ruta                                 | Descripción               | Generado por                |
-| -------------------- | ------------------------------------ | ------------------------- | --------------------------- |
-| **Dataset original** | `data/stroke_dataset.csv`            | Datos originales de ictus | Manual (incluido en repo)   |
-| **Modelo entrenado** | `notebooks/models/ictus_model_*.pkl` | Modelo ML entrenado       | **`train_model_tuning.py`** |
-| **Backend main**     | `backend/database/main.py`           | API FastAPI               | Ya existe                   |
-| **Frontend app**     | `frontend/app.py`                    | Aplicación Streamlit      | Ya existe                   |
+| Archivo               | Ruta                              | Descripción                       | Estado      |
+| --------------------- | --------------------------------- | --------------------------------- | ----------- |
+| **Dataset original**  | `data/stroke_dataset.csv`         | Datos originales (3984 registros) | ✅ Incluido |
+| **Modelo XGBoost**    | `models/xgboost_modelo_final.pkl` | Modelo optimizado con Optuna      | ✅ Incluido |
+| **Scaler + metadata** | `models/preprocessed_data.pkl`    | StandardScaler + feature names    | ✅ Incluido |
+| **Backend API**       | `backend/database/main.py`        | Endpoints FastAPI                 | ✅ Incluido |
+| **Frontend app**      | `frontend/app.py`                 | Aplicación Streamlit (6 tabs)     | ✅ Incluido |
 
-### ⚠️ Archivos Opcionales (Se generan automáticamente)
+### ⚠️ Archivos Opcionales (Solo para EDA y evaluación)
 
-| Archivo                 | Ruta                                            | Descripción               | Generado por          |
-| ----------------------- | ----------------------------------------------- | ------------------------- | --------------------- |
-| **Datasets procesados** | `data/processed/stroke_data_processed.csv`      | Para EDA/Evaluación       | `Preprocessing.ipynb` |
-| **Dataset test**        | `data/processed/stroke_data_processed_test.csv` | Para evaluación           | `Preprocessing.ipynb` |
-| **Base de datos**       | `backend/database/predictions.db`               | Historial de predicciones | FastAPI (automático)  |
+| Archivo               | Ruta                                            | Descripción               | Generado por                 |
+| --------------------- | ----------------------------------------------- | ------------------------- | ---------------------------- |
+| **Dataset procesado** | `data/processed/stroke_data_processed.csv`      | Train set (25 features)   | `PreprocessingCleaned.ipynb` |
+| **Dataset test**      | `data/processed/stroke_data_processed_test.csv` | Test set (997 registros)  | `PreprocessingCleaned.ipynb` |
+| **Base de datos**     | `backend/database/predictions.db`               | Historial de predicciones | FastAPI (automático)         |
+
+**Nota**: Sin los datasets procesados, las pestañas 1 (EDA) y 2 (Evaluación) mostrarán un aviso. La pestaña 4 (Predicción Individual) funciona siempre.
 
 ---
 
 ## 🎯 Uso del Sistema
 
-### ⚠️ PREREQUISITO: Entrenar el Modelo
+### ⚡ Inicio Rápido (3 pasos)
 
-**Antes de usar la aplicación por primera vez**, debes entrenar el modelo:
+El modelo ya está entrenado en el repositorio. Solo necesitas:
 
 ```bash
-cd notebooks
-python train_model_tuning.py
+# 1. Activar entorno virtual
+source .venv/bin/activate  # Linux/Mac
+# .venv\Scripts\activate   # Windows
+
+# 2. (Opcional) Iniciar backend en otra terminal
+cd backend/database
+uvicorn main:app --reload
+
+# 3. Lanzar Streamlit
+streamlit run frontend/app.py
 ```
 
-✅ Esto genera el archivo `notebooks/models/ictus_model_YYYYMMDD_HHMMSS.pkl` necesario para las predicciones.
+✅ **Listo!** Abre http://localhost:8501 en tu navegador
 
 ---
 
@@ -169,14 +178,18 @@ Si solo necesitas hacer predicciones individuales:
 streamlit run frontend/app.py
 ```
 
-✅ **Funciona**: Pestaña "🎯 Predicción Individual"
-❌ **No funciona**: Pestaña "📜 Historial de Predicciones"
+**Pestañas disponibles:**
+
+- ✅ **Tab 4**: 🎯 Predicción Individual (siempre funcional)
+- ⚠️ **Tab 1**: 📊 EDA (requiere datasets procesados)
+- ⚠️ **Tab 2**: 🔮 Evaluación (requiere datasets procesados)
+- ❌ **Tab 6**: 📜 Historial (requiere backend)
 
 ---
 
 ### Opción 2: Sistema Completo (Backend + Frontend)
 
-Para usar todas las funcionalidades (incluido historial de predicciones):
+Para usar todas las 6 pestañas (incluido historial de predicciones):
 
 #### **Terminal 1: Iniciar Backend API**
 
@@ -217,21 +230,34 @@ Abrir navegador: http://localhost:8501
 
 ## 🔧 Comandos Útiles
 
-### Generar Datasets Procesados (Opcional)
+### Generar Datasets Procesados (Solo si quieres usar EDA/Evaluación)
 
-Si necesitas usar las pestañas EDA y Evaluación:
+```bash
+jupyter notebook
+# Abrir y ejecutar PreprocessingCleaned.ipynb (Run All)
+```
 
-1. Abrir `notebooks/Preprocessing.ipynb` en Jupyter
-2. Ejecutar todas las celdas
-3. Se generarán automáticamente:
-   - `data/processed/stroke_data_processed.csv`
-   - `data/processed/stroke_data_processed_test.csv`
+Genera:
+
+- `data/processed/stroke_data_processed.csv` (3984 registros, 25 features)
+- `data/processed/stroke_data_processed_test.csv` (997 registros)
+
+### Reentrenar Modelo (Opcional)
+
+```bash
+jupyter notebook
+# Abrir y ejecutar XGBoost.ipynb (Run All)
+```
+
+Genera nuevo modelo optimizado con Optuna (80 trials, ~34 segundos)
 
 ### Verificar API Backend
 
 ```bash
 curl http://localhost:8000
 ```
+
+Respuesta esperada: `{"message": "Stroke Prediction API"}`
 
 ### Ver Predicciones Guardadas
 
@@ -271,39 +297,60 @@ pytest test/test_train_model_tuning.py -v
 - **GET /predictions/{id}**  
   Obtener predicción por ID
 
-### 🔹 Frontend Streamlit
+### 🔹 Frontend Streamlit (6 Pestañas)
 
-#### Pestaña 1: 📊 EDA (Exploración de Datos)
+#### ✅ Pestaña 1: 📊 EDA (Exploración de Datos)
 
 - Visualización de distribución de datos
-- Matriz de correlación
+- Matriz de correlación de 25 features
 - Análisis de riesgo por edad
+- **Requiere**: datasets procesados
 
-#### Pestaña 2: 🔮 Evaluación del Modelo
+#### ✅ Pestaña 2: 🔮 Evaluación del Modelo
 
-- Evaluación en datasets de test/train
+- Evaluación en datasets de test/train/ambos
 - Matriz de confusión
 - Métricas de clasificación
+- Preview de predicciones
+- **Requiere**: datasets procesados
 
-#### Pestaña 3: 📈 Métricas del Modelo
+#### ✅ Pestaña 3: 📈 Métricas del Modelo
 
 - Accuracy, Precision, Recall, F1-Score
-- AUC-ROC
+- AUC-ROC (84.4%)
 - Distribución de probabilidades
+- Interpretación de métricas clave
+- **Requiere**: evaluación previa en Tab 2
 
-#### Pestaña 4: 🎯 Predicción Individual
+#### ✅ Pestaña 4: 🎯 Predicción Individual (SIEMPRE FUNCIONAL)
 
-- Formulario interactivo
-- Predicción en tiempo real
-- Recomendaciones médicas
-- Guardado automático en backend
+- Formulario interactivo con 10 campos
+- Predicción en tiempo real con XGBoost
+- **Sistema de riesgo en 3 niveles**:
+  - 🟢 BAJO (<20%): Recomendaciones preventivas
+  - 🟡 MODERADO (20-50%): Evaluación médica
+  - 🔴 ALTO (≥50%): Atención urgente
+- Barra visual de probabilidad
+- Recomendaciones médicas personalizadas
+- Guardado automático en backend (si está activo)
+- Vista de datos procesados
 
-#### Pestaña 5: 📜 Historial de Predicciones
+#### ⚠️ Pestaña 5: �️ Predicción con Imágenes (OPCIONAL)
 
-- Visualización de predicciones pasadas
+- Análisis de resonancias magnéticas cerebrales
+- Carga de imágenes PNG/JPG/JPEG
+- Procesamiento y predicción con CNN
+- **Requiere**: modelo `stroke_image_model.h5` (en desarrollo)
+- **Estado**: Funcionalidad experimental
+
+#### ✅ Pestaña 6: 📜 Historial de Predicciones
+
+- Tabla de predicciones pasadas
 - Estadísticas del historial
-- Gráficos de tendencias
-- Distribución de resultados
+- Gráficos de tendencias de confianza
+- Distribución de resultados por categoría
+- Filtros y paginación
+- **Requiere**: backend activo
 
 ---
 
@@ -311,29 +358,57 @@ pytest test/test_train_model_tuning.py -v
 
 ### Características Principales
 
-- **Algoritmo**: Voting Ensemble (LogisticRegression + LightGBM)
-- **Features**: 20 características (ver [MODEL_FEATURES.md](MODEL_FEATURES.md))
-- **Calibración**: Platt Scaling (sigmoid)
-- **Threshold Optimization**: Cross-validation con recall mínimo
-- **Balanceo**: SMOTE/ADASYN
+- **Algoritmo**: XGBoost optimizado con Optuna
+- **Objetivo**: Maximizar Recall (detección de casos positivos)
+- **Features**: 25 características (ver [MODEL_FEATURES.md](MODEL_FEATURES.md))
+- **Balanceo**: SMOTE (20% sampling strategy) en ImbPipeline
+- **Optimización**: 80 trials Optuna (~34 segundos)
+- **Threshold**: 0.50 (optimizado para recall)
 
-### Features del Modelo (20 columnas)
+### Métricas del Modelo (Test Set)
+
+| Métrica    | Valor | Descripción                                            |
+| ---------- | ----- | ------------------------------------------------------ |
+| **Recall** | 82%   | Detecta 82% de casos positivos (✅ Objetivo principal) |
+| Precision  | 16%   | 16% de predicciones positivas correctas                |
+| F1-Score   | 26.8% | Balance recall-precision                               |
+| AUC-ROC    | 84.4% | Excelente capacidad discriminativa                     |
+| Accuracy   | 86%   | Precisión global del modelo                            |
+
+**Enfoque médico**: Prioriza Recall sobre Precision para minimizar falsos negativos (casos de ictus no detectados).
+
+### Features del Modelo (25 columnas)
 
 ```python
 [
+    # Numéricas originales (4)
     'age', 'hypertension', 'heart_disease', 'avg_glucose_level', 'bmi',
-    'risk_factors', 'age_risk_interaction', 'gender_encoded',
-    'ever_married_encoded', 'Residence_type_encoded',
-    'work_type_Private', 'work_type_Self-employed',
-    'smoking_status_never smoked', 'smoking_status_smokes',
-    'age_group_36-50', 'age_group_51-65', 'age_group_65+',
-    'bmi_category_Overweight', 'bmi_category_Obese',
-    'glucose_category_Prediabetes'
+
+    # Features engineered (2)
+    'risk_factors', 'age_risk_interaction',
+
+    # Label encoding (3)
+    'gender_encoded', 'ever_married_encoded', 'Residence_type_encoded',
+
+    # One-hot: work_type (3 de 5)
+    'work_type_Private', 'work_type_Self-employed', 'work_type_children',
+
+    # One-hot: smoking_status (3 de 4)
+    'smoking_status_formerly smoked', 'smoking_status_never smoked', 'smoking_status_smokes',
+
+    # One-hot: age_group (4 de 5)
+    'age_group_19-35', 'age_group_36-50', 'age_group_51-65', 'age_group_65+',
+
+    # One-hot: bmi_category (3 de 4)
+    'bmi_category_Normal', 'bmi_category_Overweight', 'bmi_category_Obese',
+
+    # One-hot: glucose_category (2 de 3)
+    'glucose_category_Prediabetes', 'glucose_category_Diabetes'
 ]
 ```
 
-**Nota**: El preprocesamiento genera 25 columnas, pero el modelo usa solo 20.  
-Ver [MODEL_FEATURES.md](MODEL_FEATURES.md) para detalles completos.
+**Preprocesamiento**: Solo 4 features numéricas son escaladas con StandardScaler.  
+Ver [MODEL_FEATURES.md](MODEL_FEATURES.md) para detalles completos de cada feature.
 
 ---
 
@@ -341,73 +416,94 @@ Ver [MODEL_FEATURES.md](MODEL_FEATURES.md) para detalles completos.
 
 ### Error: "No se encontraron modelos entrenados"
 
-**Causa**: No has ejecutado el script de entrenamiento.
+**Causa**: Archivo `models/xgboost_modelo_final.pkl` no encontrado.
 
 **Solución**:
 
-1. Verificar que no exista el modelo:
+```bash
+# Verificar que existe
+ls models/xgboost_modelo_final.pkl
 
-   ```bash
-   ls notebooks/models/ictus_model_*.pkl
-   ```
+# Si no existe, reentrenar con Jupyter
+jupyter notebook
+# Abrir notebooks/XGBoost.ipynb y ejecutar todas las celdas
+```
 
-2. Si no existe, entrenar el modelo (OBLIGATORIO):
-
-   ```bash
-   cd notebooks
-   python train_model_tuning.py
-   ```
-
-3. Esperar a que termine el entrenamiento (5-15 minutos)
-
-4. Verificar que se creó el modelo:
-   ```bash
-   ls notebooks/models/
-   ```
+El modelo ya está incluido en el repositorio. Este error solo ocurre si lo borraste accidentalmente.
 
 ### Error: "Backend no disponible"
 
-**Solución**: Verificar que el backend esté corriendo:
+**Síntoma**: Tab 6 (Historial) muestra "⚠️ El backend no está disponible"
+
+**Solución**:
 
 ```bash
+# Verificar que el backend esté corriendo
 curl http://localhost:8000
-```
 
-Si no responde, iniciar el backend:
-
-```bash
+# Si no responde, iniciar el backend en otra terminal
 cd backend/database
 uvicorn main:app --reload
 ```
 
-### Error: "X has 25 features, but expecting 20"
+**Nota**: La Tab 4 (Predicción Individual) funciona sin backend, pero no guarda historial.
 
-**Solución**: Este error está resuelto en la versión actual. Si persiste, verificar que `frontend/app.py` use `MODEL_EXPECTED_FEATURES` (20 columnas).
+### Error: "Feature shape mismatch"
 
-### Error: "FileNotFoundError: stroke_data_processed.csv"
+**Solución**: Este error está resuelto en la versión actual. El modelo espera **25 features** exactas.
 
-**Solución**: Los datasets procesados son opcionales. Opciones:
+Si persiste:
 
-1. Usar solo la pestaña de Predicción Individual (funciona sin datasets)
-2. Generar los datasets ejecutando `notebooks/Preprocessing.ipynb`
+1. Verificar que `PreprocessingCleaned.ipynb` genera 25 features
+2. Verificar que `app.py` use `MODEL_EXPECTED_FEATURES` con 25 columnas
+3. Revisar [MODEL_FEATURES.md](MODEL_FEATURES.md) para la lista correcta
+
+### Warning: "⚠️ Esta pestaña requiere los datasets de evaluación"
+
+**Síntoma**: Tabs 1 (EDA) y 2 (Evaluación) muestran advertencia.
+
+**Solución**: Generar datasets procesados (opcional):
+
+```bash
+jupyter notebook
+# Abrir notebooks/PreprocessingCleaned.ipynb y ejecutar Run All
+```
+
+Genera:
+
+- `data/processed/stroke_data_processed.csv`
+- `data/processed/stroke_data_processed_test.csv`
+
+**Nota**: La Tab 4 (Predicción Individual) funciona sin estos archivos.
+
+### Error: "Progress Value has invalid type: float32"
+
+**Solución**: Actualizado en la última versión de `app.py`. Si persiste, actualiza desde el repositorio:
+
+```bash
+git pull origin dev
+```
 
 ---
 
 ## 🛠️ Tecnologías Utilizadas
 
-| Categoría    | Tecnología       | Versión    |
-| ------------ | ---------------- | ---------- |
-| **Backend**  | FastAPI          | 0.115.5    |
-|              | Uvicorn          | 0.34.0     |
-|              | SQLAlchemy       | 2.0.44     |
-| **Frontend** | Streamlit        | 1.51.0     |
-|              | Plotly           | 6.4.0      |
-| **ML**       | scikit-learn     | 1.7.2      |
-|              | LightGBM         | 4.6.0      |
-|              | imbalanced-learn | 0.14.0     |
-| **Data**     | pandas           | 2.3.3      |
-|              | numpy            | 2.3.4      |
-| **DB**       | SQLite           | (built-in) |
+| Categoría    | Tecnología       | Versión    | Uso                               |
+| ------------ | ---------------- | ---------- | --------------------------------- |
+| **Backend**  | FastAPI          | 0.115.5    | API REST para predicciones        |
+|              | Uvicorn          | 0.34.0     | Servidor ASGI                     |
+|              | SQLAlchemy       | 2.0.44     | ORM para base de datos            |
+| **Frontend** | Streamlit        | 1.51.0     | Interfaz web interactiva (6 tabs) |
+|              | Plotly           | 6.4.0      | Visualizaciones dinámicas         |
+| **ML**       | XGBoost          | 3.1.1      | Modelo principal de predicción    |
+|              | scikit-learn     | 1.7.2      | Preprocesamiento y métricas       |
+|              | imbalanced-learn | 0.14.0     | SMOTE para balanceo de clases     |
+|              | Optuna           | 4.2.0      | Optimización de hiperparámetros   |
+| **DL**       | TensorFlow       | 2.20.0     | Modelo CNN imágenes (opcional)    |
+|              | Keras            | 3.9.0      | API alto nivel para DL            |
+| **Data**     | pandas           | 2.3.3      | Manipulación de datos             |
+|              | numpy            | 2.3.4      | Operaciones numéricas             |
+| **DB**       | SQLite           | (built-in) | Almacenamiento de historial       |
 
 ---
 

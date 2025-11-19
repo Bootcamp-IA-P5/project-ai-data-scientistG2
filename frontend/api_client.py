@@ -6,10 +6,11 @@ Este módulo proporciona funciones para interactuar con los endpoints del backen
 import requests
 from typing import Dict, List, Optional
 import streamlit as st
+import os
 
 # Configuración de la URL base del backend
-# Puedes cambiar esto según tu configuración de despliegue
-BASE_URL = "http://localhost:8000"
+# Usa variable de entorno si está disponible (para Docker), sino usa localhost
+BASE_URL = os.getenv("BACKEND_URL", "http://localhost:8000")
 
 
 class APIClient:
