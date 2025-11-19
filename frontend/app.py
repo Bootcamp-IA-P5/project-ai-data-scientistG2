@@ -44,7 +44,7 @@ except NameError:
     SCRIPT_DIR = os.getcwd()
 
 # Ajustar si estamos en una subcarpeta (ej: frontend/)
-if os.path.basename(SCRIPT_DIR) == 'frontend':
+if os.path.basename(SCRIPT_DIR) == "frontend":
     SCRIPT_DIR = os.path.dirname(SCRIPT_DIR)
 
 print(f"📂 SCRIPT_DIR: {SCRIPT_DIR}")  # Debug
@@ -54,45 +54,48 @@ print(f"📂 SCRIPT_DIR: {SCRIPT_DIR}")  # Debug
 def find_all_models():
     """Busca automáticamente todos los modelos disponibles."""
     models_dir = os.path.join(SCRIPT_DIR, "models")
-    
+
     print(f"🔍 Buscando modelos en: {models_dir}")
-    
+
     if not os.path.exists(models_dir):
         print(f"❌ La carpeta models no existe: {models_dir}")
         return {}, {}
-    
+
     files_in_dir = os.listdir(models_dir)
     print(f"📁 Archivos encontrados: {files_in_dir}")
-    
+
     tabular_models = {}
     image_models = {}
-    
+
     # Buscar modelos tabulares XGBoost (.pkl)
-    pkl_files = [f for f in files_in_dir if f.endswith('.pkl') and 'image' not in f.lower()]
+    pkl_files = [
+        f for f in files_in_dir if f.endswith(".pkl") and "image" not in f.lower()
+    ]
     for pkl_file in pkl_files:
         full_path = os.path.join(models_dir, pkl_file)
-        
+
         # Distinguir entre XGBoost y MLP
-        if 'info' in pkl_file.lower():
+        if "info" in pkl_file.lower():
             model_name = f"MLP ClassWeight ({pkl_file})"
         else:
             model_name = f"XGBoost ({pkl_file})"
-        
+
         tabular_models[model_name] = full_path
         print(f"✅ Encontrado modelo tabular: {model_name}")
-    
+
     # Buscar modelos de imágenes (.h5 o mejor_modelo_dense.keras)
     image_files = [
-        f for f in files_in_dir 
-        if ('image' in f.lower() or f == 'mejor_modelo_dense.keras') 
-        and f.endswith(('.h5', '.keras'))
+        f
+        for f in files_in_dir
+        if ("image" in f.lower() or f == "mejor_modelo_dense.keras")
+        and f.endswith((".h5", ".keras"))
     ]
     for image_file in image_files:
         full_path = os.path.join(models_dir, image_file)
         model_name = f"Modelo de Imágenes ({image_file})"
         image_models[model_name] = full_path
         print(f"✅ Encontrado modelo de imágenes: {model_name}")
-    
+
     return tabular_models, image_models
 
 
@@ -113,6 +116,7 @@ st.markdown("---")
 
 # --- FUNCIONES DE CARGA Y VERIFICACIÓN ---
 
+
 @st.cache_data
 def check_available_models():
     """Verifica qué modelos tabulares existen en el disco."""
@@ -125,12 +129,13 @@ def check_available_models():
     print(f"✅ Modelos tabulares verificados: {len(available)}")
     return available
 
+
 @st.cache_resource
 def load_pretrained_model(model_path):
     """Carga un modelo pre-entrenado desde disco."""
     try:
         # Detectar tipo de modelo por extensión
-        if model_path.endswith('.pkl'):
+        if model_path.endswith(".pkl"):
             # Modelo XGBoost/sklearn
             loaded_data = joblib.load(model_path)
             if isinstance(loaded_data, dict) and "model" in loaded_data:
@@ -141,21 +146,23 @@ def load_pretrained_model(model_path):
                 model = loaded_data
                 scaler = None
                 feature_names = None
-            return model, scaler, feature_names, True, 'xgboost'
-        
-        elif model_path.endswith(('.h5', '.keras')):
+            return model, scaler, feature_names, True, "xgboost"
+
+        elif model_path.endswith((".h5", ".keras")):
             # Modelo Keras/TensorFlow
             import tensorflow as tf
+
             model = tf.keras.models.load_model(model_path)
-            return model, None, None, True, 'keras'
-        
+            return model, None, None, True, "keras"
+
         else:
             st.error(f"Formato de modelo no soportado: {model_path}")
             return None, None, None, False, None
-            
+
     except Exception as e:
         st.error(f"Error al cargar el modelo: {str(e)}")
         import traceback
+
         st.code(traceback.format_exc())
         return None, None, None, False, None
 
@@ -164,14 +171,20 @@ def load_pretrained_model(model_path):
 def load_data():
     """Carga los datasets de ictus."""
     try:
-        train_path = os.path.join(SCRIPT_DIR, "data", "processed", "stroke_data_processed.csv")
-        test_path = os.path.join(SCRIPT_DIR, "data", "processed", "stroke_data_processed_test.csv")
-        
+        train_path = os.path.join(
+            SCRIPT_DIR, "data", "processed", "stroke_data_processed.csv"
+        )
+        test_path = os.path.join(
+            SCRIPT_DIR, "data", "processed", "stroke_data_processed_test.csv"
+        )
+
         df_train = pd.read_csv(train_path)
         df_test = pd.read_csv(test_path)
 
         if "stroke" not in df_train.columns or "stroke" not in df_test.columns:
-            st.error("Error: La columna objetivo 'stroke' no se encontró en los archivos de datos.")
+            st.error(
+                "Error: La columna objetivo 'stroke' no se encontró en los archivos de datos."
+            )
             return None, None, False
 
         return df_train, df_test, True
@@ -194,7 +207,7 @@ available_models = check_available_models()
 if not available_models:
     st.sidebar.error("❌ No se encontraron modelos entrenados")
     st.sidebar.info(f"📂 Carpeta esperada: {os.path.join(SCRIPT_DIR, 'models')}")
-    
+
     # Mostrar qué archivos hay
     models_dir = os.path.join(SCRIPT_DIR, "models")
     if os.path.exists(models_dir):
@@ -204,13 +217,11 @@ if not available_models:
             st.sidebar.write(f"   • {f}")
     else:
         st.sidebar.write("⚠️ La carpeta 'models/' no existe")
-    
+
     st.stop()
 
 available_names = list(available_models.keys())
-model_type = st.sidebar.selectbox(
-    "Selecciona el Modelo:", available_names, index=0
-)
+model_type = st.sidebar.selectbox("Selecciona el Modelo:", available_names, index=0)
 
 st.sidebar.subheader("📊 Modelos Tabulares Disponibles")
 for name, path in AVAILABLE_TABULAR_MODELS.items():
@@ -227,7 +238,9 @@ for name, path in AVAILABLE_IMAGE_MODELS.items():
         st.sidebar.error(f"❌ {name}")
 
 model_path = available_models[model_type]
-loaded_model, scaler, feature_names, model_loaded_successfully, model_framework = load_pretrained_model(model_path)
+loaded_model, scaler, feature_names, model_loaded_successfully, model_framework = (
+    load_pretrained_model(model_path)
+)
 
 if not model_loaded_successfully:
     st.sidebar.error(f"❌ Error al cargar: {os.path.basename(model_path)}")
@@ -272,14 +285,16 @@ else:
 
 # --- INTERFAZ PRINCIPAL - SISTEMA DE PESTAÑAS ---
 
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
-    "📊 Exploración de Datos (EDA)",
-    "🔮 Evaluación",
-    "📈 Métricas del Modelo",
-    "🎯 Predicción Individual",
-    "🖼️ Predicción con Imágenes",
-    "📜 Historial de Predicciones",
-])
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs(
+    [
+        "📊 Exploración de Datos (EDA)",
+        "🔮 Evaluación",
+        "📈 Métricas del Modelo",
+        "🎯 Predicción Individual",
+        "🖼️ Predicción con Imágenes",
+        "📜 Historial de Predicciones",
+    ]
+)
 
 # ----------------------------------------------------
 # TAB 1: EXPLORACIÓN DE DATOS (EDA)
@@ -395,14 +410,31 @@ data/processed/stroke_data_processed_test.csv
                 # El modelo fue guardado con 25 features (todas las del CSV)
                 # NO se aplicó drop_first=True correctamente
                 MODEL_EXPECTED_FEATURES = [
-                    "age", "hypertension", "heart_disease", "avg_glucose_level", "bmi",
-                    "risk_factors", "age_risk_interaction",
-                    "gender_encoded", "ever_married_encoded", "Residence_type_encoded",
-                    "work_type_Private", "work_type_Self-employed", "work_type_children",
-                    "smoking_status_formerly smoked", "smoking_status_never smoked", "smoking_status_smokes",
-                    "age_group_19-35", "age_group_36-50", "age_group_51-65", "age_group_65+",
-                    "bmi_category_Normal", "bmi_category_Overweight", "bmi_category_Obese",
-                    "glucose_category_Prediabetes", "glucose_category_Diabetes"
+                    "age",
+                    "hypertension",
+                    "heart_disease",
+                    "avg_glucose_level",
+                    "bmi",
+                    "risk_factors",
+                    "age_risk_interaction",
+                    "gender_encoded",
+                    "ever_married_encoded",
+                    "Residence_type_encoded",
+                    "work_type_Private",
+                    "work_type_Self-employed",
+                    "work_type_children",
+                    "smoking_status_formerly smoked",
+                    "smoking_status_never smoked",
+                    "smoking_status_smokes",
+                    "age_group_19-35",
+                    "age_group_36-50",
+                    "age_group_51-65",
+                    "age_group_65+",
+                    "bmi_category_Normal",
+                    "bmi_category_Overweight",
+                    "bmi_category_Obese",
+                    "glucose_category_Prediabetes",
+                    "glucose_category_Diabetes",
                 ]
 
                 st.info(f"🔍 El modelo espera {len(MODEL_EXPECTED_FEATURES)} features")
@@ -413,13 +445,17 @@ data/processed/stroke_data_processed_test.csv
                 extra_cols = set(X.columns) - set(MODEL_EXPECTED_FEATURES)
 
                 if missing_cols:
-                    st.warning(f"⚠️ Columnas faltantes (se crearán con valor 0): {missing_cols}")
+                    st.warning(
+                        f"⚠️ Columnas faltantes (se crearán con valor 0): {missing_cols}"
+                    )
                     # Crear columnas faltantes con valor 0
                     for col in missing_cols:
                         X[col] = 0
 
                 if extra_cols:
-                    st.info(f"ℹ️ Columnas extra en el dataset (serán ignoradas): {extra_cols}")
+                    st.info(
+                        f"ℹ️ Columnas extra en el dataset (serán ignoradas): {extra_cols}"
+                    )
 
                 # Seleccionar solo las 25 columnas en el orden correcto
                 X_processed = X[MODEL_EXPECTED_FEATURES].copy()
@@ -428,7 +464,7 @@ data/processed/stroke_data_processed_test.csv
 
                 # NO aplicar scaler (datos ya preprocesados según el notebook)
                 X_processed_array = X_processed.values
-                
+
                 st.info("ℹ️ No se aplica scaling (datos ya preprocesados)")
 
                 # Predecir
@@ -451,28 +487,50 @@ data/processed/stroke_data_processed_test.csv
                 st.session_state.model_name = model_type
 
                 st.success("✅ Modelo evaluado exitosamente!")
-                
+
                 # Mostrar preview de predicciones
                 with st.expander("🔍 Preview de Predicciones"):
-                    preview_df = pd.DataFrame({
-                        'Real': y.head(10).values,
-                        'Predicho': y_pred_class[:10],
-                        'Probabilidad': y_pred_proba[:10] if y_pred_proba is not None else [None]*10
-                    })
+                    preview_df = pd.DataFrame(
+                        {
+                            "Real": y.head(10).values,
+                            "Predicho": y_pred_class[:10],
+                            "Probabilidad": (
+                                y_pred_proba[:10]
+                                if y_pred_proba is not None
+                                else [None] * 10
+                            ),
+                        }
+                    )
                     st.dataframe(preview_df)
 
             except Exception as e:
                 st.error(f"❌ Error al hacer predicciones: {str(e)}")
                 st.info("💡 Posibles causas:")
-                st.write("- El modelo no es compatible con la estructura actual de datos")
+                st.write(
+                    "- El modelo no es compatible con la estructura actual de datos"
+                )
                 st.write("- Verifica que las columnas coincidan con el entrenamiento")
-                
+
                 with st.expander("🔍 Debug Info"):
-                    st.write("**Features esperadas:**", MODEL_EXPECTED_FEATURES if 'MODEL_EXPECTED_FEATURES' in locals() else "N/A")
-                    st.write("**Columnas del dataset:**", X.columns.tolist() if 'X' in locals() else "N/A")
-                    st.write("**Shape procesado:**", X_processed.shape if 'X_processed' in locals() else "N/A")
-                
+                    st.write(
+                        "**Features esperadas:**",
+                        (
+                            MODEL_EXPECTED_FEATURES
+                            if "MODEL_EXPECTED_FEATURES" in locals()
+                            else "N/A"
+                        ),
+                    )
+                    st.write(
+                        "**Columnas del dataset:**",
+                        X.columns.tolist() if "X" in locals() else "N/A",
+                    )
+                    st.write(
+                        "**Shape procesado:**",
+                        X_processed.shape if "X_processed" in locals() else "N/A",
+                    )
+
                 import traceback
+
                 st.code(traceback.format_exc())
 
         # VISUALIZACIONES POST-EVALUACIÓN
@@ -690,10 +748,14 @@ with tab4:
                 input_data["gender_encoded"] = input_data["gender"].map(gender_map)
 
                 married_map = {"No": 0, "Yes": 1}
-                input_data["ever_married_encoded"] = input_data["ever_married"].map(married_map)
+                input_data["ever_married_encoded"] = input_data["ever_married"].map(
+                    married_map
+                )
 
                 residence_map = {"Rural": 0, "Urban": 1}
-                input_data["Residence_type_encoded"] = input_data["Residence_type"].map(residence_map)
+                input_data["Residence_type_encoded"] = input_data["Residence_type"].map(
+                    residence_map
+                )
 
                 # 4. ONE-HOT ENCODING (SIN drop_first para que coincida con el modelo)
                 categorical_cols = [
@@ -713,14 +775,31 @@ with tab4:
 
                 # 6. SELECCIONAR LAS 25 FEATURES DEL MODELO (todas las del CSV)
                 MODEL_EXPECTED_FEATURES = [
-                    "age", "hypertension", "heart_disease", "avg_glucose_level", "bmi",
-                    "risk_factors", "age_risk_interaction",
-                    "gender_encoded", "ever_married_encoded", "Residence_type_encoded",
-                    "work_type_Private", "work_type_Self-employed", "work_type_children",
-                    "smoking_status_formerly smoked", "smoking_status_never smoked", "smoking_status_smokes",
-                    "age_group_19-35", "age_group_36-50", "age_group_51-65", "age_group_65+",
-                    "bmi_category_Normal", "bmi_category_Overweight", "bmi_category_Obese",
-                    "glucose_category_Prediabetes", "glucose_category_Diabetes"
+                    "age",
+                    "hypertension",
+                    "heart_disease",
+                    "avg_glucose_level",
+                    "bmi",
+                    "risk_factors",
+                    "age_risk_interaction",
+                    "gender_encoded",
+                    "ever_married_encoded",
+                    "Residence_type_encoded",
+                    "work_type_Private",
+                    "work_type_Self-employed",
+                    "work_type_children",
+                    "smoking_status_formerly smoked",
+                    "smoking_status_never smoked",
+                    "smoking_status_smokes",
+                    "age_group_19-35",
+                    "age_group_36-50",
+                    "age_group_51-65",
+                    "age_group_65+",
+                    "bmi_category_Normal",
+                    "bmi_category_Overweight",
+                    "bmi_category_Obese",
+                    "glucose_category_Prediabetes",
+                    "glucose_category_Diabetes",
                 ]
 
                 # Crear columnas faltantes con 0
@@ -738,22 +817,57 @@ with tab4:
                 prediction_class = st.session_state.model.predict(input_data_scaled)[0]
 
                 if hasattr(st.session_state.model, "predict_proba"):
-                    prediction_proba = st.session_state.model.predict_proba(input_data_scaled)[0, 1]
+                    prediction_proba = st.session_state.model.predict_proba(
+                        input_data_scaled
+                    )[0, 1]
                 else:
                     prediction_proba = None
 
                 # 9. MOSTRAR RESULTADOS
                 st.subheader("✅ Resultado de la Predicción")
 
+                # Determinar nivel de riesgo basado en probabilidad
                 if prediction_proba is not None:
-                    st.metric("Probabilidad de Ictus (Clase 1)", f"{prediction_proba:.2f}")
+                    # Niveles de riesgo
+                    if prediction_proba < 0.2:
+                        risk_level = "BAJO"
+                        result_text = "🟢 **RIESGO BAJO DE ICTUS**"
+                        result_color = "green"
+                        risk_emoji = "🟢"
+                    elif prediction_proba < 0.5:
+                        risk_level = "MODERADO"
+                        result_text = "🟡 **RIESGO MODERADO DE ICTUS**"
+                        result_color = "orange"
+                        risk_emoji = "🟡"
+                    else:
+                        risk_level = "ALTO"
+                        result_text = "🔴 **RIESGO ALTO DE ICTUS**"
+                        result_color = "red"
+                        risk_emoji = "🔴"
 
-                if prediction_class == 1:
-                    result_text = "🔴 **RIESGO ALTO DE ICTUS**"
-                    result_color = "red"
+                    # Mostrar probabilidad
+                    st.metric("Probabilidad de Ictus", f"{prediction_proba:.1%}")
+
+                    # Barra visual de probabilidad
+                    progress_color = (
+                        "🔴"
+                        if prediction_proba >= 0.5
+                        else "🟡" if prediction_proba >= 0.2 else "🟢"
+                    )
+                    st.progress(min(prediction_proba, 1.0))
+
                 else:
-                    result_text = "🟢 **RIESGO BAJO/MODERADO DE ICTUS**"
-                    result_color = "green"
+                    # Fallback si no hay probabilidad
+                    if prediction_class == 1:
+                        risk_level = "ALTO"
+                        result_text = "🔴 **RIESGO ALTO DE ICTUS**"
+                        result_color = "red"
+                        risk_emoji = "🔴"
+                    else:
+                        risk_level = "BAJO"
+                        result_text = "🟢 **RIESGO BAJO DE ICTUS**"
+                        result_color = "green"
+                        risk_emoji = "🟢"
 
                 st.markdown(
                     f"**Clasificación del Modelo:** <span style='color:{result_color}; font-size: 24px'>{result_text}</span>",
@@ -763,35 +877,71 @@ with tab4:
                 # 10. RECOMENDACIÓN MÉDICA
                 st.subheader("🏥 Recomendación Médica")
 
-                if prediction_proba is not None and prediction_proba >= RISK_THRESHOLD:
+                if risk_level == "ALTO":
                     st.error(
                         f"""
-                    **¡ATENCIÓN!**
-                    Basado en una probabilidad predicha de **{prediction_proba:.2f}** (superior al umbral de {RISK_THRESHOLD:.2f}), 
-                    el modelo sugiere un riesgo significativo de Ictus.
+                    **⚠️ ¡ATENCIÓN - RIESGO ALTO!**
+                    
+                    Probabilidad de ictus: **{prediction_proba:.1%}**
+                    
+                    El modelo indica un riesgo significativo de ictus.
+                    """
+                    )
+                    st.markdown(
+                        """
+                    **Recomendaciones URGENTES:**
+                    * 🏥 **Visitar a un Especialista:** Consulta inmediata con neurólogo o cardiólogo
+                    * 🔬 **Pruebas Diagnósticas:** TC, RM cerebral o ecocardiogramas según indicación
+                    * 💊 **Control Médico Estricto:** Monitoreo de presión arterial y glucosa
+                    * 🚭 **Modificación Inmediata:** Dejar de fumar, control de peso, dieta cardiosaludable
+                    * ⚡ **Signos de Alarma:** Ante cualquier síntoma FAST, llamar emergencias inmediatamente
+                    """
+                    )
+
+                elif risk_level == "MODERADO":
+                    st.warning(
+                        f"""
+                    **⚠️ RIESGO MODERADO**
+                    
+                    Probabilidad de ictus: **{prediction_proba:.1%}**
+                    
+                    El modelo detecta factores de riesgo que requieren atención.
                     """
                     )
                     st.markdown(
                         """
                     **Recomendaciones:**
-                    * **Visitar a un Especialista:** Consulta inmediata con un neurólogo o cardiólogo para evaluación exhaustiva
-                    * **Pruebas Correspondientes:** TC, RM o ecocardiogramas según indicación médica
-                    * **Modificación de Estilo de Vida:** Control riguroso de presión arterial, glucosa, peso (IMC) y dejar de fumar
+                    * 👨‍⚕️ **Evaluación Médica:** Consulta con médico de cabecera en las próximas semanas
+                    * 📋 **Control de Factores:** Monitorear presión arterial, glucosa, colesterol
+                    * 🏃 **Prevención Activa:** Ejercicio regular (30min/día), dieta mediterránea
+                    * 🚭 **Reducir Riesgos:** Si fumas, considera dejarlo; reduce alcohol
+                    * 👀 **Vigilancia:** Atento a síntomas como mareos, pérdida de fuerza o habla confusa
                     """
                     )
-                else:
-                    st.success("El modelo predice un riesgo bajo o moderado de Ictus.")
+
+                else:  # BAJO
+                    st.success(
+                        f"""
+                    **✅ RIESGO BAJO**
+                    
+                    Probabilidad de ictus: **{prediction_proba:.1%}**
+                    
+                    El modelo indica bajo riesgo de ictus.
+                    """
+                    )
                     st.markdown(
                         """
-                    **Recomendaciones:**
-                    * **Control Médico Rutinario:** Continuar con revisiones médicas regulares
-                    * **Prevención:** Mantener estilo de vida saludable: dieta equilibrada, ejercicio regular, evitar tabaquismo
-                    * **Monitoreo de Síntomas:** Estar atento a señales FAST (Face drooping, Arm weakness, Speech difficulty, Time to call emergency)
+                    **Recomendaciones de Prevención:**
+                    * 🏥 **Chequeos Rutinarios:** Continuar con revisiones médicas anuales
+                    * 💪 **Estilo de Vida Saludable:** Mantener dieta equilibrada y ejercicio regular
+                    * 🚭 **Prevención:** Evitar tabaquismo y consumo excesivo de alcohol
+                    * 📊 **Monitoreo:** Control periódico de presión arterial y glucosa
+                    * 🧠 **Educación:** Conocer síntomas FAST (Face, Arm, Speech, Time)
                     """
                     )
 
                 st.info(f"🤖 **Modelo utilizado:** {st.session_state.model_name}")
-                
+
                 with st.expander("📋 Ver Datos Procesados"):
                     st.write(f"**Shape:** {input_data.shape}")
                     st.dataframe(input_data)
@@ -812,232 +962,290 @@ with tab4:
                             "smoking_status": smoking_status,
                         }
 
-                        if save_prediction_to_backend(input_dict, prediction_class, prediction_proba):
-                            st.success("✅ Predicción guardada en el historial del backend")
+                        if save_prediction_to_backend(
+                            input_dict, prediction_class, prediction_proba
+                        ):
+                            st.success(
+                                "✅ Predicción guardada en el historial del backend"
+                            )
                         else:
-                            st.warning("⚠️ No se pudo guardar la predicción en el backend")
+                            st.warning(
+                                "⚠️ No se pudo guardar la predicción en el backend"
+                            )
 
             except Exception as e:
                 st.error(f"Error al hacer la predicción: {str(e)}")
-                st.info("💡 Verifica que los datos de entrada coincidan con la estructura del modelo")
-                
+                st.info(
+                    "💡 Verifica que los datos de entrada coincidan con la estructura del modelo"
+                )
+
                 import traceback
+
                 st.code(traceback.format_exc())
 
     else:
-        st.info("👆 Espera a que el modelo se cargue o evalúa el modelo primero en la pestaña 'Evaluación'")
+        st.info(
+            "👆 Espera a que el modelo se cargue o evalúa el modelo primero en la pestaña 'Evaluación'"
+        )
 # ----------------------------------------------------
 # TAB 5: PREDICCIÓN CON IMÁGENES MÉDICAS
 # ----------------------------------------------------
 with tab5:
     st.header("🖼️ Predicción de Ictus con Imágenes Médicas")
-    
+
     # Cargar modelo de imágenes
     @st.cache_resource
     def load_image_model():
         """Carga el modelo de clasificación de imágenes"""
         try:
             import tensorflow as tf
-            
+
             # Buscar en los modelos de imágenes disponibles
             if not AVAILABLE_IMAGE_MODELS:
                 return None, None, False
-            
+
             # Tomar el primer modelo de imágenes disponible
             model_name = list(AVAILABLE_IMAGE_MODELS.keys())[0]
             model_path = AVAILABLE_IMAGE_MODELS[model_name]
-            metadata_path = model_path.replace('.h5', '_metadata.json').replace('.keras', '_metadata.json')
-            
+            metadata_path = model_path.replace(".h5", "_metadata.json").replace(
+                ".keras", "_metadata.json"
+            )
+
             if not os.path.exists(model_path):
                 return None, None, False
-            
+
             model = tf.keras.models.load_model(model_path)
-            
+
             # Cargar metadata
             metadata = None
             if os.path.exists(metadata_path):
                 import json
-                with open(metadata_path, 'r') as f:
+
+                with open(metadata_path, "r") as f:
                     metadata = json.load(f)
-            
+
             return model, metadata, True
         except Exception as e:
             st.error(f"Error al cargar modelo de imágenes: {str(e)}")
             import traceback
+
             st.code(traceback.format_exc())
             return None, None, False
-                
-    
+
     image_model, image_metadata, image_model_loaded = load_image_model()
-    
+
     if not image_model_loaded:
         st.warning("⚠️ Modelo de imágenes no disponible")
         st.info("📁 Archivo necesario: `models/stroke_image_model.h5`")
-        st.markdown("💡 Entrena el modelo usando el notebook de imágenes y guárdalo en la carpeta `models/`")
+        st.markdown(
+            "💡 Entrena el modelo usando el notebook de imágenes y guárdalo en la carpeta `models/`"
+        )
     else:
         st.success("✅ Modelo de imágenes cargado correctamente")
-        
+
         # Mostrar información del modelo
         if image_metadata:
             col1, col2, col3 = st.columns(3)
             with col1:
-                st.metric("Recall en Test", f"{image_metadata.get('test_recall', 0):.2%}")
+                st.metric(
+                    "Recall en Test", f"{image_metadata.get('test_recall', 0):.2%}"
+                )
             with col2:
-                st.metric("Precision en Test", f"{image_metadata.get('test_precision', 0):.2%}")
+                st.metric(
+                    "Precision en Test",
+                    f"{image_metadata.get('test_precision', 0):.2%}",
+                )
             with col3:
-                input_shape = image_metadata.get('input_shape', [224, 224, 1])
+                input_shape = image_metadata.get("input_shape", [224, 224, 1])
                 st.metric("Input Shape", f"{input_shape[0]}x{input_shape[1]}")
-        
+
         st.markdown("---")
         st.subheader("📤 Cargar Imagen Médica")
-        
+
         # Upload de imagen
         uploaded_file = st.file_uploader(
             "Selecciona una imagen de resonancia magnética cerebral (MRI)",
-            type=['png', 'jpg', 'jpeg', 'dcm'],
-            help="Formatos soportados: PNG, JPG, JPEG, DICOM"
+            type=["png", "jpg", "jpeg", "dcm"],
+            help="Formatos soportados: PNG, JPG, JPEG, DICOM",
         )
-        
+
         if uploaded_file is not None:
             col1, col2 = st.columns([1, 1])
-            
+
             with col1:
                 st.subheader("🖼️ Imagen Original")
-                
+
                 # Leer y mostrar imagen
                 from PIL import Image
                 import io
-                
+
                 # Leer imagen
                 image_bytes = uploaded_file.read()
                 image = Image.open(io.BytesIO(image_bytes))
-                
+
                 # Mostrar imagen original
                 st.image(image, caption="Imagen cargada", use_container_width=True)
-                
+
                 # Info de la imagen
                 st.info(f"📐 Dimensiones: {image.size[0]} x {image.size[1]}")
-            
+
             with col2:
                 st.subheader("🔬 Procesamiento")
-                
+
                 with st.spinner("Procesando imagen..."):
                     try:
                         # Obtener shape esperado
                         if image_metadata:
-                            target_size = tuple(image_metadata['input_shape'][:2])
+                            target_size = tuple(image_metadata["input_shape"][:2])
                         else:
                             target_size = (224, 224)
-                        
+
                         # Convertir a escala de grises si es necesario
-                        if image.mode != 'L':
-                            image_gray = image.convert('L')
+                        if image.mode != "L":
+                            image_gray = image.convert("L")
                         else:
                             image_gray = image
-                        
+
                         # Redimensionar
-                        image_resized = image_gray.resize(target_size, Image.Resampling.LANCZOS)
-                        
+                        image_resized = image_gray.resize(
+                            target_size, Image.Resampling.LANCZOS
+                        )
+
                         # Mostrar imagen procesada
-                        st.image(image_resized, caption=f"Imagen procesada ({target_size[0]}x{target_size[1]})", use_container_width=True)
-                        
+                        st.image(
+                            image_resized,
+                            caption=f"Imagen procesada ({target_size[0]}x{target_size[1]})",
+                            use_container_width=True,
+                        )
+
                         # Convertir a array numpy
                         img_array = np.array(image_resized)
-                        
+
                         # Normalizar [0, 1]
                         img_array = img_array / 255.0
-                        
+
                         # Añadir dimensiones: (1, H, W, 1)
                         img_array = img_array[np.newaxis, ..., np.newaxis]
-                        
+
                         st.success(f"✅ Imagen procesada: {img_array.shape}")
-                        
+
                     except Exception as e:
                         st.error(f"Error al procesar imagen: {str(e)}")
                         img_array = None
-            
+
             # Botón de predicción
             st.markdown("---")
-            
-            if img_array is not None and st.button("🔮 **Analizar Imagen**", type="primary", use_container_width=True):
+
+            if img_array is not None and st.button(
+                "🔮 **Analizar Imagen**", type="primary", use_container_width=True
+            ):
                 with st.spinner("Analizando imagen con IA..."):
                     try:
                         # Hacer predicción
-                        prediction_proba = image_model.predict(img_array, verbose=0)[0][0]
-                        
+                        prediction_proba = image_model.predict(img_array, verbose=0)[0][
+                            0
+                        ]
+
                         # Threshold
-                        threshold = image_metadata.get('threshold', 0.5) if image_metadata else 0.5
+                        threshold = (
+                            image_metadata.get("threshold", 0.5)
+                            if image_metadata
+                            else 0.5
+                        )
                         prediction_class = 1 if prediction_proba >= threshold else 0
-                        
+
                         # Mostrar resultados
                         st.markdown("---")
                         st.subheader("✅ Resultado del Análisis")
-                        
+
                         # Visualización del resultado
                         col1, col2, col3 = st.columns([1, 2, 1])
-                        
+
                         with col2:
                             # Medidor de probabilidad
-                            fig = go.Figure(go.Indicator(
-                                mode="gauge+number+delta",
-                                value=prediction_proba * 100,
-                                domain={'x': [0, 1], 'y': [0, 1]},
-                                title={'text': "Probabilidad de Ictus (%)"},
-                                delta={'reference': threshold * 100},
-                                gauge={
-                                    'axis': {'range': [None, 100]},
-                                    'bar': {'color': "darkred" if prediction_class == 1 else "green"},
-                                    'steps': [
-                                        {'range': [0, threshold*100], 'color': "lightgreen"},
-                                        {'range': [threshold*100, 100], 'color': "lightcoral"}
-                                    ],
-                                    'threshold': {
-                                        'line': {'color': "red", 'width': 4},
-                                        'thickness': 0.75,
-                                        'value': threshold * 100
-                                    }
-                                }
-                            ))
+                            fig = go.Figure(
+                                go.Indicator(
+                                    mode="gauge+number+delta",
+                                    value=prediction_proba * 100,
+                                    domain={"x": [0, 1], "y": [0, 1]},
+                                    title={"text": "Probabilidad de Ictus (%)"},
+                                    delta={"reference": threshold * 100},
+                                    gauge={
+                                        "axis": {"range": [None, 100]},
+                                        "bar": {
+                                            "color": (
+                                                "darkred"
+                                                if prediction_class == 1
+                                                else "green"
+                                            )
+                                        },
+                                        "steps": [
+                                            {
+                                                "range": [0, threshold * 100],
+                                                "color": "lightgreen",
+                                            },
+                                            {
+                                                "range": [threshold * 100, 100],
+                                                "color": "lightcoral",
+                                            },
+                                        ],
+                                        "threshold": {
+                                            "line": {"color": "red", "width": 4},
+                                            "thickness": 0.75,
+                                            "value": threshold * 100,
+                                        },
+                                    },
+                                )
+                            )
                             fig.update_layout(height=300)
                             st.plotly_chart(fig, use_container_width=True)
-                        
+
                         # Resultado textual
                         if prediction_class == 1:
-                            st.error(f"""
+                            st.error(
+                                f"""
                             ### 🔴 DETECCIÓN POSITIVA DE ICTUS
                             
                             **Probabilidad:** {prediction_proba:.2%}
                             
                             El modelo detecta patrones compatibles con ictus en la imagen.
-                            """)
-                            
-                            st.warning("""
+                            """
+                            )
+
+                            st.warning(
+                                """
                             **⚠️ RECOMENDACIONES URGENTES:**
                             - ✅ Derivar inmediatamente a neurólogo
                             - ✅ Realizar estudios complementarios (TC, RM adicionales)
                             - ✅ Considerar tratamiento de emergencia
                             - ✅ Monitoreo continuo del paciente
-                            """)
+                            """
+                            )
                         else:
-                            st.success(f"""
+                            st.success(
+                                f"""
                             ### 🟢 NO SE DETECTA ICTUS
                             
                             **Probabilidad:** {prediction_proba:.2%}
                             
                             El modelo no detecta patrones significativos de ictus en la imagen.
-                            """)
-                            
-                            st.info("""
+                            """
+                            )
+
+                            st.info(
+                                """
                             **📋 RECOMENDACIONES:**
                             - ✅ Continuar con evaluación clínica estándar
                             - ✅ Considerar otros diagnósticos diferenciales
                             - ✅ Monitoreo de síntomas del paciente
                             - ⚠️ Este resultado no descarta completamente el diagnóstico
-                            """)
-                        
+                            """
+                            )
+
                         # Disclaimer médico
                         st.markdown("---")
-                        st.warning("""
+                        st.warning(
+                            """
                         **⚠️ ADVERTENCIA MÉDICA IMPORTANTE**
                         
                         Esta herramienta es de **apoyo al diagnóstico** y NO reemplaza el criterio médico profesional.
@@ -1045,8 +1253,9 @@ with tab5:
                         - Se requiere evaluación clínica completa del paciente
                         - Considerar síntomas, historia clínica y otros estudios
                         - En caso de duda, siempre priorizar la evaluación humana
-                        """)
-                        
+                        """
+                        )
+
                         # Información técnica (expandible)
                         with st.expander("🔧 Información Técnica del Modelo"):
                             if image_metadata:
@@ -1054,16 +1263,17 @@ with tab5:
                             st.write(f"**Shape de entrada:** {img_array.shape}")
                             st.write(f"**Threshold usado:** {threshold}")
                             st.write(f"**Probabilidad raw:** {prediction_proba:.6f}")
-                        
+
                     except Exception as e:
                         st.error(f"Error al hacer predicción: {str(e)}")
                         st.exception(e)
         else:
             st.info("👆 Carga una imagen médica para comenzar el análisis")
-            
+
             # Mostrar ejemplos de uso
             with st.expander("💡 Guía de Uso"):
-                st.markdown("""
+                st.markdown(
+                    """
                 ### Cómo usar esta herramienta:
                 
                 1. **Preparar la imagen:**
@@ -1088,7 +1298,8 @@ with tab5:
                 - El modelo fue entrenado con un dataset específico
                 - La precisión puede variar según la calidad de la imagen
                 - No reemplaza el diagnóstico médico profesional
-                """)
+                """
+                )
 # ----------------------------------------------------
 # TAB 6: HISTORIAL DE PREDICCIONES
 # ----------------------------------------------------
@@ -1212,5 +1423,7 @@ with tab6:
 
 # FOOTER DE LA APLICACIÓN
 st.markdown("---")
-st.markdown(f"**Stroke Risk Predictor** - Modelos Tabulares: {len(available_models)} | Modelos Imágenes: {len(AVAILABLE_IMAGE_MODELS)}")
+st.markdown(
+    f"**Stroke Risk Predictor** - Modelos Tabulares: {len(available_models)} | Modelos Imágenes: {len(AVAILABLE_IMAGE_MODELS)}"
+)
 st.markdown("Desarrollado con ❤️ usando Streamlit")
