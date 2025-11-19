@@ -1,49 +1,40 @@
-version: "3.8"
-
 services:
-  # Servicio Backend (FastAPI)
+  # Backend FastAPI
   backend:
     build:
       context: .
-      dockerfile: backend/Dockerfile
-    container_name: stroke-backend
+      dockerfile: Dockerfile.backend
     ports:
       - "8000:8000"
-    volumes:
-      # Persistir la base de datos
-      - ./backend/database:/app/backend/database
     environment:
-      - PYTHONUNBUFFERED=1
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    restart: unless-stopped
+      - PYTHONPATH=/app
+    volumes:
+      - ./data:/app/data
     networks:
-      - stroke-network
+      - ml-network
+    restart: unless-stopped
 
-  # Servicio Frontend (Streamlit)
+  # Frontend Streamlit
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.frontend
-    container_name: stroke-frontend
     ports:
       - "8501:8501"
     environment:
-      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
       - BACKEND_URL=http://backend:8000
+    volumes:
+      - ./data:/app/data
     depends_on:
       - backend
-    restart: unless-stopped
     networks:
-      - stroke-network
+      - ml-network
+    restart: unless-stopped
 
 networks:
-  stroke-network:
+  ml-network:
     driver: bridge
 
 volumes:
-  db-data:
+  ml-data:

@@ -43,12 +43,12 @@ coverage.xml
 *.h5
 *.parquet
 
-# Datos y modelos pesados
+# Modelos y salidas pesadas
 *.pkl
-*.keras
 *.joblib
 *.npy
 *.npz
+*.ckpt
 
 # Archivos de entorno y configuración
 .env
@@ -60,6 +60,3 @@ coverage.xml
 # Otros
 .DS_Store
 Thumbs.db*
-
-find_20_features.py
-inspect_model.py
