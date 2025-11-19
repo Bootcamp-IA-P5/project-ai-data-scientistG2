@@ -24,8 +24,7 @@ def test_modelo_mlp():
     print("\n📁 Test 1: Verificando archivos del modelo MLP...")
     
     archivos_mlp = [
-        'data/mlp_model.pkl',
-        'data/scaler.pkl'
+        'models/modelo_improved_info.pkl',
     ]
     
     for archivo in archivos_mlp:
@@ -39,11 +38,8 @@ def test_modelo_mlp():
     print("\n🤖 Test 2: Cargando modelo MLP...")
     
     try:
-        with open('data/mlp_model.pkl', 'rb') as f:
+        with open('models/modelo_improved_info.pkl', 'rb') as f:
             model = pickle.load(f)
-        
-        with open('data/scaler.pkl', 'rb') as f:
-            scaler = pickle.load(f)
         
         print("✅ Modelo MLP cargado correctamente")
         print(f"   - Tipo de modelo: {type(model).__name__}")
@@ -212,9 +208,9 @@ def test_modelo_mlp():
     # Test 6: Verificar información del modelo si existe
     print("\n📊 Test 6: Información adicional del modelo...")
     
-    if os.path.exists('data/modelo_info.pkl'):
+    if os.path.exists('models/modelo_improved_info.pkl'):
         try:
-            with open('data/modelo_info.pkl', 'rb') as f:
+            with open('models/modelo_improved_info.pkl', 'rb') as f:
                 info = pickle.load(f)
             
             print("✅ Información del modelo encontrada:")
@@ -233,7 +229,7 @@ def main():
     """Función principal"""
     
     # Verificar directorio
-    if not os.path.exists('data/mlp_model.pkl'):
+    if not os.path.exists('models/modelo_improved_info.pkl'):
         print("❌ Error: Este script debe ejecutarse desde el directorio raíz del proyecto")
         print("💡 Uso: cd /workspaces/project-ai-data-scientistG2 && python test_modelo_mlp.py")
         return False
