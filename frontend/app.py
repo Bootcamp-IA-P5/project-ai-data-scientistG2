@@ -854,7 +854,7 @@ with tab4:
                         if prediction_proba >= 0.5
                         else "🟡" if prediction_proba >= 0.2 else "🟢"
                     )
-                    st.progress(min(prediction_proba, 1.0))
+                    st.progress(float(min(prediction_proba, 1.0)))
 
                 else:
                     # Fallback si no hay probabilidad
