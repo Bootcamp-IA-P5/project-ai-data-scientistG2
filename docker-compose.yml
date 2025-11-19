@@ -1,0 +1,49 @@
+version: "3.8"
+
+services:
+  # Servicio Backend (FastAPI)
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: stroke-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      # Persistir la base de datos
+      - ./backend/database:/app/backend/database
+    environment:
+      - PYTHONUNBUFFERED=1
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    networks:
+      - stroke-network
+
+  # Servicio Frontend (Streamlit)
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: stroke-frontend
+    ports:
+      - "8501:8501"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - BACKEND_URL=http://backend:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+    networks:
+      - stroke-network
+
+networks:
+  stroke-network:
+    driver: bridge
+
+volumes:
+  db-data:
