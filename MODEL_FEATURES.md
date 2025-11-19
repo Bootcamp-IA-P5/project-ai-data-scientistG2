@@ -2,88 +2,90 @@
 
 ## Resumen
 
-El modelo de clasificación espera **exactamente 20 features** en el siguiente orden:
+El modelo XGBoost espera **exactamente 25 features** en el siguiente orden:
 
-## Lista de Features (20 columnas)
+**⚠️ IMPORTANTE:** Las 25 features se generan automáticamente al ejecutar `PreprocessingCleaned.ipynb`
+
+## Lista de Features (25 columnas)
 
 ### 1-7: Features Numéricas Base y Engineeradas
 
-1. `age` - Edad del paciente
+1. `age` - Edad del paciente (escalada con StandardScaler)
 2. `hypertension` - Hipertensión (0=No, 1=Sí)
 3. `heart_disease` - Enfermedad cardíaca (0=No, 1=Sí)
-4. `avg_glucose_level` - Nivel promedio de glucosa
-5. `bmi` - Índice de masa corporal
-6. `risk_factors` - Suma de hipertension + heart_disease
-7. `age_risk_interaction` - age \* risk_factors
+4. `avg_glucose_level` - Nivel promedio de glucosa (escalado)
+5. `bmi` - Índice de masa corporal (escalado)
+6. `risk_factors` - Suma de hipertension + heart_disease (feature engineerada)
+7. `age_risk_interaction` - age × risk_factors (escalado)
 
 ### 8-10: Variables Binarias Codificadas (Label Encoding)
 
-8. `gender_encoded` - Género (0=Female, 1=Male, 2=Other)
+8. `gender_encoded` - Género (0=Female, 1=Male)
 9. `ever_married_encoded` - Casado anteriormente (0=No, 1=Yes)
 10. `Residence_type_encoded` - Tipo de residencia (0=Rural, 1=Urban)
 
-### 11-12: Work Type (One-Hot Encoding, drop_first=True)
+### 11-13: Work Type (One-Hot Encoding, drop_first=True)
 
-11. `work_type_Private` - Trabajo privado
-12. `work_type_Self-employed` - Autónomo
+11. `work_type_Private` - Trabajo privado (1 si aplica, 0 si no)
+12. `work_type_Self-employed` - Autónomo (1 si aplica, 0 si no)
+13. `work_type_children` - Niño/estudiante (1 si aplica, 0 si no)
 
-- **Categorías eliminadas**: `work_type_children` (primera alfabéticamente)
-- **Categorías no presentes**: `work_type_Govt_job`, `work_type_Never_worked`
+- **Baseline (todas = 0)**: Govt_job o Never_worked
 
-### 13-14: Smoking Status (One-Hot Encoding, drop_first=True)
+### 14-16: Smoking Status (One-Hot Encoding, drop_first=True)
 
-13. `smoking_status_never smoked` - Nunca fumó
-14. `smoking_status_smokes` - Fuma actualmente
+14. `smoking_status_formerly smoked` - Fumó anteriormente (1 si aplica, 0 si no)
+15. `smoking_status_never smoked` - Nunca fumó (1 si aplica, 0 si no)
+16. `smoking_status_smokes` - Fuma actualmente (1 si aplica, 0 si no)
 
-- **Categoría eliminada**: `smoking_status_formerly smoked` (primera alfabéticamente)
+- **Baseline (todas = 0)**: Estado de tabaquismo desconocido
 
-### 15-17: Age Group (One-Hot Encoding, drop_first=True)
+### 17-20: Age Group (One-Hot Encoding, drop_first=True)
 
-15. `age_group_36-50` - Edad entre 36-50 años
-16. `age_group_51-65` - Edad entre 51-65 años
-17. `age_group_65+` - Edad 65+ años
+17. `age_group_19-35` - Edad entre 19-35 años (1 si aplica, 0 si no)
+18. `age_group_36-50` - Edad entre 36-50 años (1 si aplica, 0 si no)
+19. `age_group_51-65` - Edad entre 51-65 años (1 si aplica, 0 si no)
+20. `age_group_65+` - Edad 65+ años (1 si aplica, 0 si no)
 
-- **Categoría eliminada**: `age_group_19-35` (primera alfabéticamente)
-- **Categoría no presente**: `age_group_0-18`
+- **Baseline (todas = 0)**: age_group_0-18
 
-### 18-19: BMI Category (One-Hot Encoding, drop_first=True)
+21. `bmi_category_Normal` - Peso normal (1 si aplica, 0 si no)
+22. `bmi_category_Overweight` - Sobrepeso (1 si aplica, 0 si no)
+23. `bmi_category_Obese` - Obesidad (1 si aplica, 0 si no)
 
-18. `bmi_category_Overweight` - Sobrepeso
-19. `bmi_category_Obese` - Obesidad
+- **Baseline (todas = 0)**: bmi_category_Underweight
 
-- **Categoría eliminada**: `bmi_category_Normal` (primera alfabéticamente)
-- **Categoría no presente**: `bmi_category_Underweight`
+### 24-25: Glucose Category (One-Hot Encoding, drop_first=True)
 
-### 20: Glucose Category (One-Hot Encoding, drop_first=True)
+24. `glucose_category_Prediabetes` - Prediabetes (100-125 mg/dL) (1 si aplica, 0 si no)
+25. `glucose_category_Diabetes` - Diabetes (>125 mg/dL) (1 si aplica, 0 si no)
 
-20. `glucose_category_Prediabetes` - Prediabetes
-
-- **Categoría eliminada**: `glucose_category_Diabetes` (segunda alfabéticamente)
-- **Categoría no presente**: `glucose_category_Normal`
+- **Baseline (todas = 0)**: glucose_category_Normal (<100 mg/dL)
 
 ---
 
 ## ⚠️ Notas Importantes
 
-### Preprocesamiento Original
+### Preprocesamiento Actualizado
 
-El notebook `Preprocessing.ipynb` genera **25 columnas** después del feature engineering y encoding.
+El notebook `PreprocessingCleaned.ipynb` genera **exactamente 25 columnas** que coinciden con las features del modelo.
 
-### Columnas NO usadas por el modelo (5 columnas eliminadas)
+### ✅ Sin Discrepancias
 
-Las siguientes columnas se generan en el preprocesamiento pero **NO** se usan para entrenar el modelo:
+- El preprocesamiento y el modelo están **perfectamente alineados**
+- **NO** se eliminan columnas
+- Las 25 features se usan directamente sin transformaciones adicionales
 
-1. `work_type_children`
-2. `smoking_status_formerly smoked`
-3. `age_group_19-35`
-4. `bmi_category_Normal`
-5. `glucose_category_Diabetes`
+### Escalado de Variables Numéricas
 
-### Motivo de la Discrepancia
+Solo las siguientes 4 features se escalan con `StandardScaler`:
 
-- El preprocesamiento usa `drop_first=True` en `pd.get_dummies()`, pero no de forma consistente
-- El modelo se entrenó con un subset específico de 20 features
-- Es necesario **seleccionar explícitamente** estas 20 columnas en el orden correcto antes de hacer predicciones
+- `age`
+- `avg_glucose_level`
+- `bmi`
+- `age_risk_interaction`
+
+Las variables binarias (one-hot encoding) **NO** se escalan (permanecen en 0 o 1).
 
 ### Aplicación en el Código
 
