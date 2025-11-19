@@ -59,7 +59,7 @@ def find_all_models():
     
     if not os.path.exists(models_dir):
         print(f"❌ La carpeta models no existe: {models_dir}")
-        return {}, {}  # Retorna dos diccionarios vacíos
+        return {}, {}
     
     files_in_dir = os.listdir(models_dir)
     print(f"📁 Archivos encontrados: {files_in_dir}")
@@ -67,24 +67,26 @@ def find_all_models():
     tabular_models = {}
     image_models = {}
     
-    # Buscar modelo XGBoost (.pkl) - SOLO para datos tabulares
+    # Buscar modelos tabulares XGBoost (.pkl)
     pkl_files = [f for f in files_in_dir if f.endswith('.pkl') and 'image' not in f.lower()]
     for pkl_file in pkl_files:
         full_path = os.path.join(models_dir, pkl_file)
-        model_name = f"XGBoost ({pkl_file})"
+        
+        # Distinguir entre XGBoost y MLP
+        if 'info' in pkl_file.lower():
+            model_name = f"MLP ClassWeight ({pkl_file})"
+        else:
+            model_name = f"XGBoost ({pkl_file})"
+        
         tabular_models[model_name] = full_path
         print(f"✅ Encontrado modelo tabular: {model_name}")
     
-    # Buscar modelos de Keras para datos tabulares (.keras)
-    keras_files = [f for f in files_in_dir if f.endswith('.keras') and 'image' not in f.lower()]
-    for keras_file in keras_files:
-        full_path = os.path.join(models_dir, keras_file)
-        model_name = f"Keras Tabular ({keras_file})"
-        tabular_models[model_name] = full_path
-        print(f"✅ Encontrado modelo tabular Keras: {model_name}")
-    
-    # Buscar modelo de imágenes (.h5)
-    image_files = [f for f in files_in_dir if 'image' in f.lower() and f.endswith(('.h5', '.keras'))]
+    # Buscar modelos de imágenes (.h5 o mejor_modelo_dense.keras)
+    image_files = [
+        f for f in files_in_dir 
+        if ('image' in f.lower() or f == 'mejor_modelo_dense.keras') 
+        and f.endswith(('.h5', '.keras'))
+    ]
     for image_file in image_files:
         full_path = os.path.join(models_dir, image_file)
         model_name = f"Modelo de Imágenes ({image_file})"
@@ -384,60 +386,63 @@ data/processed/stroke_data_processed_test.csv
     elif st.button("🔍 Evaluar Modelo en el Dataset Seleccionado", type="primary"):
         with st.spinner(f"Evaluando modelo {model_type}..."):
             try:
+                # Separar características (X) y variable objetivo (y)
                 TARGET_COL = "stroke"
                 X = df.drop(TARGET_COL, axis=1, errors="ignore")
                 y = df[TARGET_COL]
 
-                # Las 20 features que el modelo XGBoost necesita (drop_first=True)
+                # ===== DETERMINAR QUÉ FEATURES ESPERA EL MODELO =====
+                # El modelo fue guardado con 25 features (todas las del CSV)
+                # NO se aplicó drop_first=True correctamente
                 MODEL_EXPECTED_FEATURES = [
                     "age", "hypertension", "heart_disease", "avg_glucose_level", "bmi",
                     "risk_factors", "age_risk_interaction",
                     "gender_encoded", "ever_married_encoded", "Residence_type_encoded",
-                    "work_type_Private", "work_type_Self-employed",
-                    # NO incluir: work_type_children (eliminada por drop_first)
-                    # NO incluir: smoking_status_formerly smoked (eliminada por drop_first)
-                    "smoking_status_never smoked", "smoking_status_smokes",
-                    # NO incluir: age_group_19-35 (eliminada por drop_first)
-                    "age_group_36-50", "age_group_51-65", "age_group_65+",
-                    # NO incluir: bmi_category_Normal (eliminada por drop_first)
-                    "bmi_category_Overweight", "bmi_category_Obese",
-                    # NO incluir: glucose_category_Diabetes (eliminada por drop_first)
-                    "glucose_category_Prediabetes"
+                    "work_type_Private", "work_type_Self-employed", "work_type_children",
+                    "smoking_status_formerly smoked", "smoking_status_never smoked", "smoking_status_smokes",
+                    "age_group_19-35", "age_group_36-50", "age_group_51-65", "age_group_65+",
+                    "bmi_category_Normal", "bmi_category_Overweight", "bmi_category_Obese",
+                    "glucose_category_Prediabetes", "glucose_category_Diabetes"
                 ]
 
                 st.info(f"🔍 El modelo espera {len(MODEL_EXPECTED_FEATURES)} features")
                 st.info(f"📊 Dataset actual tiene {X.shape[1]} columnas")
 
-                # Verificar columnas
+                # Verificar qué columnas faltan o sobran
                 missing_cols = set(MODEL_EXPECTED_FEATURES) - set(X.columns)
                 extra_cols = set(X.columns) - set(MODEL_EXPECTED_FEATURES)
 
                 if missing_cols:
-                    st.error(f"❌ Columnas faltantes: {missing_cols}")
-                    st.stop()
+                    st.warning(f"⚠️ Columnas faltantes (se crearán con valor 0): {missing_cols}")
+                    # Crear columnas faltantes con valor 0
+                    for col in missing_cols:
+                        X[col] = 0
 
                 if extra_cols:
-                    st.info(f"ℹ️ Columnas ignoradas (drop_first): {extra_cols}")
+                    st.info(f"ℹ️ Columnas extra en el dataset (serán ignoradas): {extra_cols}")
 
-                # Seleccionar SOLO las 20 columnas en el orden correcto
+                # Seleccionar solo las 25 columnas en el orden correcto
                 X_processed = X[MODEL_EXPECTED_FEATURES].copy()
-                
-                st.success(f"✅ Dataset procesado correctamente: {X_processed.shape}")
 
-                # NO aplicar scaler (datos ya preprocesados)
+                st.success(f"✅ Dataset procesado: {X_processed.shape}")
+
+                # NO aplicar scaler (datos ya preprocesados según el notebook)
                 X_processed_array = X_processed.values
                 
-                # Predicción
+                st.info("ℹ️ No se aplica scaling (datos ya preprocesados)")
+
+                # Predecir
                 y_pred_class = loaded_model.predict(X_processed_array)
 
+                # Intentar obtener probabilidades para AUC
                 if hasattr(loaded_model, "predict_proba"):
                     y_pred_proba = loaded_model.predict_proba(X_processed_array)[:, 1]
                 else:
                     y_pred_proba = None
 
-                # Guardar en session state
+                # ALMACENAMIENTO EN SESSION STATE
                 st.session_state.model = loaded_model
-                st.session_state.scaler = None  # No hay scaler
+                st.session_state.scaler = None
                 st.session_state.feature_names = MODEL_EXPECTED_FEATURES
                 st.session_state.X = X_processed_array
                 st.session_state.y = y
@@ -458,18 +463,24 @@ data/processed/stroke_data_processed_test.csv
 
             except Exception as e:
                 st.error(f"❌ Error al hacer predicciones: {str(e)}")
-                import traceback
-                st.code(traceback.format_exc())
+                st.info("💡 Posibles causas:")
+                st.write("- El modelo no es compatible con la estructura actual de datos")
+                st.write("- Verifica que las columnas coincidan con el entrenamiento")
                 
                 with st.expander("🔍 Debug Info"):
                     st.write("**Features esperadas:**", MODEL_EXPECTED_FEATURES if 'MODEL_EXPECTED_FEATURES' in locals() else "N/A")
                     st.write("**Columnas del dataset:**", X.columns.tolist() if 'X' in locals() else "N/A")
+                    st.write("**Shape procesado:**", X_processed.shape if 'X_processed' in locals() else "N/A")
+                
+                import traceback
+                st.code(traceback.format_exc())
+
         # VISUALIZACIONES POST-EVALUACIÓN
         if "y_pred_class" in st.session_state:
             y = st.session_state.y
             y_pred_class = st.session_state.y_pred_class
 
-            # Matriz de Confusión simple
+            # Matriz de Confusión
             from sklearn.metrics import confusion_matrix
 
             cm = confusion_matrix(y, y_pred_class)
@@ -629,7 +640,6 @@ with tab4:
             "Umbral de Riesgo para Recomendación (Probabilidad)", 0.0, 1.0, 0.5, 0.05
         )
 
-        # ✅ BOTÓN CORRECTO PARA PREDICCIÓN INDIVIDUAL
         if st.button("🔮 **Predecir Riesgo de Ictus**", type="primary"):
             try:
                 # 1. CREAR EL DATAFRAME DE ENTRADA
@@ -648,7 +658,7 @@ with tab4:
                     }
                 )
 
-                # 2. FEATURE ENGINEERING (igual que en el preprocesamiento)
+                # 2. FEATURE ENGINEERING
                 input_data["age_group"] = pd.cut(
                     input_data["age"],
                     bins=[0, 18, 35, 50, 65, 100],
@@ -680,16 +690,12 @@ with tab4:
                 input_data["gender_encoded"] = input_data["gender"].map(gender_map)
 
                 married_map = {"No": 0, "Yes": 1}
-                input_data["ever_married_encoded"] = input_data["ever_married"].map(
-                    married_map
-                )
+                input_data["ever_married_encoded"] = input_data["ever_married"].map(married_map)
 
                 residence_map = {"Rural": 0, "Urban": 1}
-                input_data["Residence_type_encoded"] = input_data["Residence_type"].map(
-                    residence_map
-                )
+                input_data["Residence_type_encoded"] = input_data["Residence_type"].map(residence_map)
 
-                # 4. ONE-HOT ENCODING
+                # 4. ONE-HOT ENCODING (SIN drop_first para que coincida con el modelo)
                 categorical_cols = [
                     "work_type",
                     "smoking_status",
@@ -698,43 +704,41 @@ with tab4:
                     "glucose_category",
                 ]
                 input_data = pd.get_dummies(
-                    input_data, columns=categorical_cols, drop_first=True, dtype=int
+                    input_data, columns=categorical_cols, drop_first=False, dtype=int
                 )
 
                 # 5. ELIMINAR COLUMNAS ORIGINALES
                 cols_to_drop = ["gender", "ever_married", "Residence_type"]
                 input_data = input_data.drop(columns=cols_to_drop, errors="ignore")
 
-                # 6. SELECCIONAR LAS 20 FEATURES DEL MODELO
+                # 6. SELECCIONAR LAS 25 FEATURES DEL MODELO (todas las del CSV)
                 MODEL_EXPECTED_FEATURES = [
                     "age", "hypertension", "heart_disease", "avg_glucose_level", "bmi",
                     "risk_factors", "age_risk_interaction",
                     "gender_encoded", "ever_married_encoded", "Residence_type_encoded",
-                    "work_type_Private", "work_type_Self-employed",
-                    "smoking_status_never smoked", "smoking_status_smokes",
-                    "age_group_36-50", "age_group_51-65", "age_group_65+",
-                    "bmi_category_Overweight", "bmi_category_Obese",
-                    "glucose_category_Prediabetes"
+                    "work_type_Private", "work_type_Self-employed", "work_type_children",
+                    "smoking_status_formerly smoked", "smoking_status_never smoked", "smoking_status_smokes",
+                    "age_group_19-35", "age_group_36-50", "age_group_51-65", "age_group_65+",
+                    "bmi_category_Normal", "bmi_category_Overweight", "bmi_category_Obese",
+                    "glucose_category_Prediabetes", "glucose_category_Diabetes"
                 ]
 
-                # Crear columnas faltantes
+                # Crear columnas faltantes con 0
                 for col in MODEL_EXPECTED_FEATURES:
                     if col not in input_data.columns:
                         input_data[col] = 0
 
-                # Reordenar
+                # Reordenar a las 25 columnas en el orden correcto
                 input_data = input_data[MODEL_EXPECTED_FEATURES]
 
-                # 7. NO APLICAR SCALER (datos preprocesados)
+                # 7. NO APLICAR SCALER (datos ya preprocesados)
                 input_data_scaled = input_data.values
 
                 # 8. HACER PREDICCIÓN
                 prediction_class = st.session_state.model.predict(input_data_scaled)[0]
 
                 if hasattr(st.session_state.model, "predict_proba"):
-                    prediction_proba = st.session_state.model.predict_proba(
-                        input_data_scaled
-                    )[0, 1]
+                    prediction_proba = st.session_state.model.predict_proba(input_data_scaled)[0, 1]
                 else:
                     prediction_proba = None
 
@@ -742,9 +746,7 @@ with tab4:
                 st.subheader("✅ Resultado de la Predicción")
 
                 if prediction_proba is not None:
-                    st.metric(
-                        "Probabilidad de Ictus (Clase 1)", f"{prediction_proba:.2f}"
-                    )
+                    st.metric("Probabilidad de Ictus (Clase 1)", f"{prediction_proba:.2f}")
 
                 if prediction_class == 1:
                     result_text = "🔴 **RIESGO ALTO DE ICTUS**"
@@ -772,9 +774,9 @@ with tab4:
                     st.markdown(
                         """
                     **Recomendaciones:**
-                    * **Visitar a un Especialista:** Consulta inmediata con un neurólogo o cardiólogo
-                    * **Pruebas Correspondientes:** TC, RM o ecocardiogramas
-                    * **Modificación de Estilo de Vida:** Control de presión arterial, glucosa, peso y dejar de fumar
+                    * **Visitar a un Especialista:** Consulta inmediata con un neurólogo o cardiólogo para evaluación exhaustiva
+                    * **Pruebas Correspondientes:** TC, RM o ecocardiogramas según indicación médica
+                    * **Modificación de Estilo de Vida:** Control riguroso de presión arterial, glucosa, peso (IMC) y dejar de fumar
                     """
                     )
                 else:
@@ -782,20 +784,21 @@ with tab4:
                     st.markdown(
                         """
                     **Recomendaciones:**
-                    * **Control Médico Rutinario:** Continuar revisiones médicas
-                    * **Prevención:** Estilo de vida saludable
-                    * **Monitoreo de Síntomas:** Estar atento a señales FAST
+                    * **Control Médico Rutinario:** Continuar con revisiones médicas regulares
+                    * **Prevención:** Mantener estilo de vida saludable: dieta equilibrada, ejercicio regular, evitar tabaquismo
+                    * **Monitoreo de Síntomas:** Estar atento a señales FAST (Face drooping, Arm weakness, Speech difficulty, Time to call emergency)
                     """
                     )
 
                 st.info(f"🤖 **Modelo utilizado:** {st.session_state.model_name}")
                 
                 with st.expander("📋 Ver Datos Procesados"):
+                    st.write(f"**Shape:** {input_data.shape}")
                     st.dataframe(input_data)
 
                 # Guardar en backend si está disponible
                 if backend_available:
-                    with st.spinner("Guardando predicción..."):
+                    with st.spinner("Guardando predicción en el historial..."):
                         input_dict = {
                             "age": age,
                             "gender": gender,
@@ -809,20 +812,20 @@ with tab4:
                             "smoking_status": smoking_status,
                         }
 
-                        if save_prediction_to_backend(
-                            input_dict, prediction_class, prediction_proba
-                        ):
-                            st.success("✅ Predicción guardada en el historial")
+                        if save_prediction_to_backend(input_dict, prediction_class, prediction_proba):
+                            st.success("✅ Predicción guardada en el historial del backend")
                         else:
-                            st.warning("⚠️ No se pudo guardar en el backend")
+                            st.warning("⚠️ No se pudo guardar la predicción en el backend")
 
             except Exception as e:
                 st.error(f"Error al hacer la predicción: {str(e)}")
+                st.info("💡 Verifica que los datos de entrada coincidan con la estructura del modelo")
+                
                 import traceback
                 st.code(traceback.format_exc())
 
     else:
-        st.info("👆 Primero evalúa el modelo en la pestaña 'Evaluación' o espera a que cargue el modelo")
+        st.info("👆 Espera a que el modelo se cargue o evalúa el modelo primero en la pestaña 'Evaluación'")
 # ----------------------------------------------------
 # TAB 5: PREDICCIÓN CON IMÁGENES MÉDICAS
 # ----------------------------------------------------
