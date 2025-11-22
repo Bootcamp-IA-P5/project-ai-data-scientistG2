@@ -221,7 +221,7 @@ if not available_models:
     st.stop()
 
 available_names = list(available_models.keys())
-model_type = st.sidebar.selectbox("Selecciona el Modelo:", available_names, index=0)
+model_type = st.sidebar.selectbox("Selecciona el Modelo Tabular:", available_names, index=0)
 
 st.sidebar.subheader("📊 Modelos Tabulares Disponibles")
 for name, path in AVAILABLE_TABULAR_MODELS.items():
@@ -683,7 +683,7 @@ with tab4:
             )
 
         with col3:
-            gender = st.selectbox("Género", ["Male", "Female", "Other"])
+            gender = st.selectbox("Género", ["Male", "Female"])
             ever_married = st.selectbox("Casado/a Anteriormente", ["Yes", "No"])
             work_type = st.selectbox(
                 "Tipo de Trabajo",

@@ -67,7 +67,7 @@ El modelo de clasificación espera **exactamente 20 features** en el siguiente o
 
 ### Preprocesamiento Original
 
-El notebook `Preprocessing.ipynb` genera **25 columnas** después del feature engineering y encoding.
+El notebook `PreprocessingCleaned.ipynb` genera **25 columnas** después del feature engineering y encoding.
 
 ### Columnas NO usadas por el modelo (5 columnas eliminadas)
 
@@ -82,8 +82,8 @@ Las siguientes columnas se generan en el preprocesamiento pero **NO** se usan pa
 ### Motivo de la Discrepancia
 
 - El preprocesamiento usa `drop_first=True` en `pd.get_dummies()`, pero no de forma consistente
-- El modelo se entrenó con un subset específico de 20 features
-- Es necesario **seleccionar explícitamente** estas 20 columnas en el orden correcto antes de hacer predicciones
+- El modelo se entrenó con un subset específico de 25 features
+- Es necesario **proporcionar valores explícitamente** para 10 features antes de hacer predicciones
 
 ### Aplicación en el Código
 
@@ -91,14 +91,10 @@ Para hacer predicciones correctamente:
 
 ```python
 MODEL_EXPECTED_FEATURES = [
-    'age', 'hypertension', 'heart_disease', 'avg_glucose_level', 'bmi',
-    'risk_factors', 'age_risk_interaction', 'gender_encoded',
-    'ever_married_encoded', 'Residence_type_encoded',
-    'work_type_Private', 'work_type_Self-employed',
-    'smoking_status_never smoked', 'smoking_status_smokes',
-    'age_group_36-50', 'age_group_51-65', 'age_group_65+',
-    'bmi_category_Overweight', 'bmi_category_Obese',
-    'glucose_category_Prediabetes'
+    "age", "hypertension", "heart_disease", "avg_glucose_level", "bmi",
+    "risk_factors", "age_risk_interaction", "gender_encoded", "ever_married_encoded", "Residence_type_encoded",
+    "work_type_Private", "work_type_Self-employed", "work_type_children",
+    "smoking_status_formerly smoked", "smoking_status_never smoked", "smoking_status_smokes", "age_group_19-35", "age_group_36-50", "age_group_51-65", "age_group_65+", "bmi_category_Normal", "bmi_category_Overweight", "bmi_category_Obese",                     "glucose_category_Prediabetes", "glucose_category_Diabetes"
 ]
 
 # Después del preprocesamiento, seleccionar solo estas columnas:
@@ -109,7 +105,7 @@ X_for_model = X[MODEL_EXPECTED_FEATURES]
 
 ## 📅 Información del Modelo
 
-- **Archivo del modelo**: `notebooks/models/ictus_model_20251113_211435.pkl`
-- **Tipo de modelo**: `VotingClassifier` (LogisticRegression + LightGBM)
-- **Features esperadas**: 20
-- **Última actualización**: 13 de noviembre de 2025
+- **Archivo del modelo**: `models/modelo_final_oficial.pkl`
+- **Tipo de modelo**: `XGBoost`
+- **Features esperadas**: 25
+- **Última actualización**: 19 de noviembre de 2025
